@@ -9,12 +9,12 @@ from parse import parse_rav
 
 nameBot = "Machon Meir"
 userNameBot = "Machon_Meir_bot"
-DB_directory = './/DataBase//'
+DB_directory = os.path.join(os.getcwd(), 'DataBase')
 
 
 def read_config(test=True):
     global config
-    with open('.//settings//config.json', 'r') as cfg:
+    with open(os.path.join(os.getcwd(), 'settings','config.json'), 'r') as cfg:
         config = json.load(cfg)
 
     if test:
@@ -35,9 +35,9 @@ def create_table():
     if not os.path.exists(DB_directory):
         os.mkdir(DB_directory)
 
-    if not os.path.exists(DB_directory + 'MM_chat_5781.sqlite'):
+    if not os.path.exists(os.path.join(DB_directory, 'MM_chat_5781.sqlite')):
         print('DataBase is created')
-    connection = sqlite3.connect(DB_directory + 'MM_chat_5781.sqlite')
+    connection = sqlite3.connect(os.path.join(DB_directory, 'MM_chat_5781.sqlite'))
 
     cur = connection.cursor()
     tables = list(cur.execute('SELECT name FROM sqlite_master WHERE type="table"').fetchall())
@@ -86,7 +86,7 @@ create_table()
 connection = 0
 def connect_to_db():
     global connection
-    connection = sqlite3.connect(DB_directory + 'MM_chat_5781.sqlite', check_same_thread=False)
+    connection = sqlite3.connect(os.path.join(DB_directory, 'MM_chat_5781.sqlite'), check_same_thread=False)
 
 def close_db():
     global connection
@@ -203,16 +203,17 @@ def delete_msg(bot, date=None):
                 print('Msg not deleted')
         except:
             print('Failed to delete msg')
+            cur.execute('UPDATE Messages_MM_5781 SET deleted = 1 WHERE id ==' + str(indx))
 
     connection.commit()
-    print(deleted,' messages deleted', datetime.datetime.now())
+    print(deleted,' messages deleted', datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
 
     return data
 
 # in: chat_id - to send msg; paths_to_files - list of local paths; ids_in_youtube - ids in youtube to send a link
 # out: urls published
-def publish_lesson(bot, chat_id, paths_to_files, url_in_youtube, duration=None):
-    print('Publishing videos. ', len(paths_to_files), datetime.datetime.now(), end='')
+def publish_lesson(bot, chat_id, paths_to_files, url_in_youtube, titles=None, duration=None):
+    print('Publishing videos:', len(paths_to_files),'|', datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
     print('Done: ', end='')
     published = list()
     # publishing to group
@@ -222,6 +223,7 @@ def publish_lesson(bot, chat_id, paths_to_files, url_in_youtube, duration=None):
             link_y = 'https://www.youtube.com/watch?v=' + url_in_youtube[i]
         else:
             link_y = url_in_youtube[i]
+            url_in_youtube[i] = url_in_youtube[i].split('=')[-1]
 
         audio_file = open(a_file, 'rb')
 
@@ -229,7 +231,8 @@ def publish_lesson(bot, chat_id, paths_to_files, url_in_youtube, duration=None):
         tries = 0
         while tries < 3:
             try:
-                rav, title = parse_rav(a_file.split("\\")[-1][:-4])
+                video_name = titles[i] if titles != None else os.path.split(a_file)[1][:-4]
+                rav, title = parse_rav(video_name)
                 bot.send_audio(chat_id=chat_id, audio=audio_file, duration=duration[i],
                                performer=rav, title=title, thumb='audio/mpeg')
                 audio_file.close()
@@ -237,7 +240,9 @@ def publish_lesson(bot, chat_id, paths_to_files, url_in_youtube, duration=None):
                 bot.send_message(chat_id, '<a href="{}">🎦 {}</a>'.format(link_y, title), parse_mode='Html', disable_web_page_preview=True)
                 print(i+1, end=' ')
                 break
-            except:
+            except Exception as e:
+                if tries >= 2:
+                    print('Ошибка в публикации видео', e)
                 tries += 1
 
         if tries >= 3:

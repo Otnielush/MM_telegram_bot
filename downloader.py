@@ -1,9 +1,9 @@
 from pytube import YouTube
-from os import rename, path, getcwd, remove, stat
+from os import rename, path, getcwd, remove, stat, system
 from requests import get
 
-Download_folder = path.abspath('.')+'\\downloads\\'
 
+Download_folder = path.join(path.abspath(getcwd()), 'downloads')
 
 # in: url youtube video
 # out: path to file
@@ -58,6 +58,7 @@ def download_mp3(url, yt_obj=None):
 
         return '', 0
 
+    # renaming
     new_name = ytd[:-end_name]+'mp3'
     try:
         if stat(ytd).st_size <= 1:
@@ -83,3 +84,25 @@ def download_file(bot, msg, dir):
     # with open(dir+msg.document.file_name, 'wb') as f:
     #     f.write(receive.content)
     pass
+
+
+# pytube check update
+def update_if_need():
+    log_path = path.join(Download_folder,'update_log.txt')
+    system('pip3 install pytube -U > '+log_path)
+
+    with open(log_path, 'r') as log:
+        log_file = log.readlines()
+
+    if stat(log_path).st_size <= 1:
+        remove(log_path)
+        print('update with error')
+    else:
+        if log_file[-1][:12] == 'Successfully':
+            from pytube import YouTube
+            print('PyTube library updated')
+        else:
+            print('You have last version of PyTube library')
+        remove(log_path)
+
+

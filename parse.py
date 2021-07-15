@@ -12,6 +12,7 @@ import pytube
 #       titles
 #       publish dates
 def parse_new_videos_MM(max=None, till_date=None, parsed_ids=None):
+    error = True
     print('Parsing YouTube channel Machon Meir')
     try:
         html = get('https://www.youtube.com/c/MeirTvRussian/videos')
@@ -19,21 +20,23 @@ def parse_new_videos_MM(max=None, till_date=None, parsed_ids=None):
         print('Can`t open url youtube')
         return [], []
     videos = findall('/watch\?v=.{11}', html.text)
+    videos = [v[9:] for v in videos] # cutting 'watch..'
     ids = list()
     yt_objects = list()
+    titles = list()
 
     if max == None:
         max = len(videos)
 
     if max != None:
         print('{} videos found.'.format(max), end=' ')
-        print(videos)
+        # print(videos)
 
     if till_date != None:
         if type(till_date) == str:
-            till_date = datetime.fromisoformat(till_date).date()
+            till_date = datetime.fromisoformat(till_date)
         else:
-            till_date = till_date.date()
+            till_date = till_date
         # elif not type(till_date) == datetime.date:
         #     print('Date given not correctly. Need %Y-%m-%d or datetime.date format')
         #     print(type(till_date))
@@ -47,41 +50,43 @@ def parse_new_videos_MM(max=None, till_date=None, parsed_ids=None):
             if videos[i] in parsed_ids:
                 print('-', end=' ')
                 continue
-        print(i+1, end=' ')
+        print(i+1, end=', ')
 
-        try:
-            connects = 0
-            while connects < 3:
-                try:
-                    yt_obj = YouTube('https://www.youtube.com' + videos[i])
-                    yt_objects.append(yt_obj)
-                    ids.append(videos[i][9:])
-                    break
-                except:
-                    print('not')
-                    connects += 1
+        connects = 0
+        while connects < 3:
+            try:
+                yt_obj = YouTube('https://www.youtube.com/watch?v=' + videos[i])
+                yt_objects.append(yt_obj)
+                ids.append(videos[i])
+                titles.append(yt_obj.title)
+                error = False
+                break
+            except Exception as e:
+                # print('fail', end=' ')
+                print(e)
+                connects += 1
 
-            # if not connected => go next
-            if connects >= 3:
-                continue
+        # if not connected => go next
+        if connects >= 3:
+            continue
+        else:
+            date = yt_obj.publish_date
 
-            date = yt_obj.player_response['microformat']['playerMicroformatRenderer']['publishDate']
 
-            # if date reached
-            if till_date != None:
-                # print(datetime.fromisoformat(date), till_date)
-                if datetime.fromisoformat(date) < till_date:
-                    ids = ids[:i]
-                    yt_objects = yt_objects[:i]
-                    break
-
-        except:
-            pass
+        # if date reached
+        if till_date != None and date != None:
+            # print(datetime.fromisoformat(date), till_date)
+            if date < till_date:
+                ids = ids[:i]
+                yt_objects = yt_objects[:i]
+                break
 
     print('\n')
-    return ids, yt_objects
+    return ids, yt_objects, titles, error
 
-# ids, titles, dates = parse_new_videos_MM(max=4, till_date=datetime(2020, 9, 8, 2, 22, 25, 225530))
+
+# ids, yt_objects, error = parse_new_videos_MM(max=2, till_date=datetime(2020, 9, 8, 2, 22, 25, 225530))
+
 
 # Parsing name of rebe and title from file name
 # Out: name of rebe, title
@@ -101,7 +106,8 @@ def parse_rav(name):
 
             artist = cleaner_txt(name[cut_start:cut_end])
             m = 1 if cut_start == 0 else 0
-            title = cleaner_txt(name[:cut_start] + name[cut_end + m:])
+            # title = cleaner_txt(name[:cut_start] + name[cut_end + m:])
+            title = name[:cut_start] + name[cut_end + m:]
 
         # not found рав and name
         else:
@@ -136,5 +142,5 @@ def say_date():
 
 if __name__ == '__main__':
     # yt = YouTube('https://www.youtube.com/watch?v=79-UbfNRWbo')
-    ids, yt = parse_new_videos_MM(3)
+    ids, yt, err = parse_new_videos_MM(3)
     print(ids)
