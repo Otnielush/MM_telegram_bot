@@ -106,3 +106,7 @@ def update_if_need():
         remove(log_path)
 
 
+if __name__ == '__main__':
+    new_name, lenght = download_mp3('https://www.youtube.com/watch?v=FNdC_3LR2AI&list=PLeJUAZtaceNrAtQZRIf2-lKKWGTryRuA8&index=10')
+    print(f"{new_name = }\n{lenght = }")
+

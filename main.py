@@ -8,7 +8,7 @@ import funcs, downloader, parse
 
 # CONST
 PARSE_MAX = 5
-TEST = False
+TEST = True
 
 settings = funcs.read_config(test=TEST)
 admins = []
