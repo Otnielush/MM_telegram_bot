@@ -20,7 +20,7 @@ def parse_new_videos_MM(max=None, till_date=None, parsed_ids=None):
         print('Can`t open url youtube')
         return [], []
     videos = findall('/watch\?v=.{11}', html.text)
-    videos = [v[9:] for v in videos] # cutting 'watch..'
+    videos = [v[9:] for v in videos]  # cutting 'watch..'
     ids = list()
     yt_objects = list()
     titles = list()
@@ -96,7 +96,7 @@ def parse_rav(name):
     if len(cut_start) > 0:
         cut_start = cut_start[0]
         search_rav = [x for x in finditer(
-            r'левин|йона|авраам|адлер|рэувен|трушин|довид|иуда|зеев|зээв|мешков|яаков|меир|яков|регев|йосеф|делевич|пинхас|гулис|фаерман|исраэль|амиуд|элиягу|жинский',
+            r'левин|иванцов|авраам|адлер|рэувен|трушин|довид|иуда|зеев|зээв|мешков|яаков|меир|яков|регев|йосеф|делевич|пинхас|гулис|фаерман|исраэль|амиуд|элиягу|жинский|бигон|рубин|',
             name.lower())]
         if len(search_rav) > 0:
             cut_end = 0
@@ -142,5 +142,5 @@ def say_date():
 
 if __name__ == '__main__':
     # yt = YouTube('https://www.youtube.com/watch?v=79-UbfNRWbo')
-    ids, yt, err = parse_new_videos_MM(3)
-    print(ids)
+    ids, yt_objects, titles, err = parse_new_videos_MM(3)
+    print(ids, titles)

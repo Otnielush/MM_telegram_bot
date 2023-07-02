@@ -107,6 +107,6 @@ def update_if_need():
 
 
 if __name__ == '__main__':
-    new_name, lenght = download_mp3('https://www.youtube.com/watch?v=FNdC_3LR2AI&list=PLeJUAZtaceNrAtQZRIf2-lKKWGTryRuA8&index=10')
+    new_name, lenght = download_mp3('https://www.youtube.com/watch?v=6ourS3cCaCc')
     print(f"{new_name = }\n{lenght = }")
 

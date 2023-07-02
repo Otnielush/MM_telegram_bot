@@ -14,7 +14,7 @@ DB_directory = os.path.join(os.getcwd(), 'DataBase')
 
 def read_config(test=True):
     global config
-    with open(os.path.join(os.getcwd(), 'settings','config.json'), 'r') as cfg:
+    with open(os.path.join(os.getcwd(), 'settings', 'config.json'), 'r') as cfg:
         config = json.load(cfg)
 
     if test:
