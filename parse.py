@@ -96,14 +96,14 @@ def parse_rav(name):
     if len(cut_start) > 0:
         cut_start = cut_start[0]
         search_rav = [x for x in finditer(
-            r'левин|иванцов|авраам|адлер|рэувен|трушин|довид|иуда|зеев|зээв|мешков|яаков|меир|яков|регев|йосеф|делевич|пинхас|гулис|фаерман|исраэль|амиуд|элиягу|жинский|бигон|рубин|',
+            r'(левин|иванцов|авраам|адлер|рэувен|трушин|довид|иуда|зеев|зээв|мешков|яаков|меир|яков|регев|йосеф|делевич|пинхас|гулис|фаерман|исраэль|амиуд|элиягу|бережинский|бигон|рубин)',
             name.lower())]
         if len(search_rav) > 0:
             cut_end = 0
+            # cut_end = search_rav[0].end()
             for o in search_rav:
                 if o.end() > cut_end:
                     cut_end = o.end()
-
             artist = cleaner_txt(name[cut_start:cut_end])
             m = 1 if cut_start == 0 else 0
             # title = cleaner_txt(name[:cut_start] + name[cut_end + m:])
@@ -115,7 +115,7 @@ def parse_rav(name):
     else:
         title = name
 
-    return artist, title
+    return artist.strip(), title.strip()
 
 
 # Substracting not needed symbols from start and end string
@@ -142,5 +142,9 @@ def say_date():
 
 if __name__ == '__main__':
     # yt = YouTube('https://www.youtube.com/watch?v=79-UbfNRWbo')
-    ids, yt_objects, titles, err = parse_new_videos_MM(3)
+    ids, yt_objects, titles, err = parse_new_videos_MM(1)
     print(ids, titles)
+
+    for ttl in titles:
+        artist, title = parse_rav(ttl)
+        print(f"{artist = } | {title = }")
