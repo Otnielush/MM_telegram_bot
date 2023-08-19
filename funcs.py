@@ -6,7 +6,6 @@ import os
 import pandas as pd
 from parse import parse_rav
 
-
 nameBot = "Machon Meir"
 userNameBot = "Machon_Meir_bot"
 DB_directory = os.path.join(os.getcwd(), 'DataBase')
@@ -25,12 +24,12 @@ def read_config(test=True):
 
     return config
 
+
 config = read_config()
 
 
 # БД
 def create_table():
-
     # проверка наличия базы данных
     if not os.path.exists(DB_directory):
         os.mkdir(DB_directory)
@@ -80,19 +79,24 @@ def create_table():
 
     connection.close()
 
+
 create_table()
 
-#connect to DataBase
+# connect to DataBase
 connection = 0
+
+
 def connect_to_db():
     global connection
     connection = sqlite3.connect(os.path.join(DB_directory, 'MM_chat_5781.sqlite'), check_same_thread=False)
+
 
 def close_db():
     global connection
     connection.commit()
     connection.close()
     print('DataBade closed')
+
 
 connect_to_db()
 
@@ -121,7 +125,7 @@ def message_to_db(msg):
 
 def date_to_int(date):
     if type(date) == datetime.datetime:
-        return date.year*100000000 + date.month*1000000 + date.day*10000 + date.hour*100 + date.minute # 2012 09 15 20:15:54 -> 201 209 152 015
+        return date.year * 100000000 + date.month * 1000000 + date.day * 10000 + date.hour * 100 + date.minute  # 2012 09 15 20:15:54 -> 201 209 152 015
     elif type(date) == datetime.date:
         return date.year * 100000000 + date.month * 1000000 + date.day * 10000
     elif type(date) == str:
@@ -141,7 +145,6 @@ def int_to_date(num):
 
 
 def bot_create():
-
     bot = telebot.TeleBot(config['TokenBot'])
 
     '''
@@ -165,21 +168,21 @@ def bot_create():
 
     return bot
 
+
 def read_db(condition=''):
     global connection
     cur = connection.cursor()
     cols = [description[0] for description in cur.execute('SELECT * FROM  Messages_MM_5781').description]
-    data = pd.DataFrame(cur.execute('SELECT * FROM Messages_MM_5781 '+condition).fetchall(), columns=cols)
+    data = pd.DataFrame(cur.execute('SELECT * FROM Messages_MM_5781 ' + condition).fetchall(), columns=cols)
     connection.commit()
     return data.set_index('id')
 
 
 def delete_msg(bot, date=None):
-
     global connection
     cur = connection.cursor()
-    if date == None:
-        date = datetime.datetime.now()-datetime.timedelta(days=1)
+    if date is None:
+        date = datetime.datetime.now() - datetime.timedelta(days=1)
 
     if type(date) == datetime.datetime:
         date = date_to_int(date)
@@ -187,8 +190,7 @@ def delete_msg(bot, date=None):
         print('Wrong date type')
         return
 
-
-    data = read_db('WHERE date_int <= '+str(date)+' AND deleted != 1')  # AND id_chat == '+str(id))
+    data = read_db('WHERE date_int <= ' + str(date) + ' AND deleted != 1')  # AND id_chat == '+str(id))
     # data['datetime'] = data['datetime'].apply(lambda x: datetime.datetime.fromisoformat(x))
 
     deleted = 0
@@ -206,14 +208,15 @@ def delete_msg(bot, date=None):
             cur.execute('UPDATE Messages_MM_5781 SET deleted = 1 WHERE id ==' + str(indx))
 
     connection.commit()
-    print(deleted,' messages deleted', datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+    print(deleted, ' messages deleted', datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
 
     return data
+
 
 # in: chat_id - to send msg; paths_to_files - list of local paths; ids_in_youtube - ids in youtube to send a link
 # out: urls published
 def publish_lesson(bot, chat_id, paths_to_files, url_in_youtube, titles=None, duration=None):
-    print('Publishing videos:', len(paths_to_files),'|', datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+    print('Publishing videos:', len(paths_to_files), '|', datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
     print('Done: ', end='')
     published = list()
     # publishing to group
@@ -231,14 +234,15 @@ def publish_lesson(bot, chat_id, paths_to_files, url_in_youtube, titles=None, du
         tries = 0
         while tries < 3:
             try:
-                video_name = titles[i] if titles != None else os.path.split(a_file)[1][:-4]
+                video_name = titles[i] if titles is not None else os.path.split(a_file)[1][:-4]
                 rav, title = parse_rav(video_name)
                 bot.send_audio(chat_id=chat_id, audio=audio_file, duration=duration[i],
                                performer=rav, title=title, thumb='audio/mpeg')
                 audio_file.close()
 
-                bot.send_message(chat_id, '<a href="{}">🎦 {}</a>'.format(link_y, title), parse_mode='Html', disable_web_page_preview=True)
-                print(i+1, end=' ')
+                bot.send_message(chat_id, '<a href="{}">🎦 {}</a>'.format(link_y, title), parse_mode='Html',
+                                 disable_web_page_preview=True)
+                print(i + 1, end=' ')
                 break
             except Exception as e:
                 if tries >= 2:
@@ -290,4 +294,3 @@ def del_published_mp3(mp3_to_publish):
         except:
             not_deleted.append(mp3)
     return not_deleted
-

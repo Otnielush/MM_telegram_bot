@@ -1,7 +1,9 @@
-import time
 import datetime
+import time
 
-import funcs, downloader, parse
+import downloader
+import funcs
+import parse
 
 # set PYTHONOPTIMIZE=1 && pyinstaller --onefile main.py
 # installed pyTelegramBotAPI, pytube
@@ -27,7 +29,6 @@ loop = True
 params = funcs.vars_from_db()
 last_update_id = 0
 
-
 # Main loop
 while loop:
     # for updates
@@ -48,13 +49,14 @@ while loop:
     if time_now >= params['last_parsed_date'] + params['youtube_inverval']:  # datetime format
 
         # parsing MM channel for new videos
-        vid_ids, yt_objects, titles, error = parse.parse_new_videos_MM(max=PARSE_MAX, till_date=params['last_parsed_date'], parsed_ids=params['last_loaded_videos_id'])
+        vid_ids, yt_objects, titles, error = parse.parse_new_videos_MM(max=PARSE_MAX,
+                                                                       till_date=params['last_parsed_date'],
+                                                                       parsed_ids=params['last_loaded_videos_id'])
         print('Num of ids: ', len(vid_ids), '; error = ', error, sep='')
 
         # if error in downloading videos -> check library updates
         if error:
             downloader.update_if_need()
-
 
         # WE HAVE THIS IN PARSING
         # checking already loaded videos
@@ -66,20 +68,21 @@ while loop:
         #         temp_obj.append(yt_objects[i])
         # print('Num of ids after check:', len(vid_ids))
 
-
         # downloading from youtube audio
         mp3_to_publish = list()
         downloaded_ids = list()
         mp3_durations = list()
         titles_to_publish = list()
         if len(vid_ids) > 0:
-            print('Starting download video from YouTube (' + str(len(vid_ids)) + ') ' + datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            print(
+                'Starting download video from YouTube (' + str(len(vid_ids)) + ') ' + datetime.datetime.now().strftime(
+                    "%d/%m/%Y %H:%M:%S"))
             print('Done: ', end='')
             for i in range(len(vid_ids)):
                 try:
                     file_name, mp3_duration = downloader.download_mp3(vid_ids[i], yt_objects[i])
                     if file_name != '':
-                        print(str(i+1), end=' ')
+                        print(str(i + 1), end=' ')
                         mp3_to_publish.append(file_name)
                         downloaded_ids.append(vid_ids[i])
                         mp3_durations.append(mp3_duration)
@@ -91,7 +94,8 @@ while loop:
         # publishing to group
         published_ids = list()
         if len(mp3_to_publish) > 0:
-            published_ids = funcs.publish_lesson(bot, settings['MMChatId'], mp3_to_publish, downloaded_ids, titles_to_publish, mp3_durations)
+            published_ids = funcs.publish_lesson(bot, settings['MMChatId'], mp3_to_publish, downloaded_ids,
+                                                 titles_to_publish, mp3_durations)
 
         # saving parse date and last ids to data base and deleting previous data
         params['last_parsed_date'] = time_now
@@ -138,8 +142,9 @@ while loop:
                                 bot.delete_message(update.message.chat.id, update.message.message_id)
                             except:
                                 print('can`t delete message of new member')
-                            msg_new = bot.send_message(update.message.chat.id, 'Приветствуем нового участника <i>{}</i>'.format(
-                                update.message.from_user.first_name if update.message.from_user.first_name != None and update.message.from_user.first_name != '' else update.message.from_user.username),
+                            msg_new = bot.send_message(update.message.chat.id,
+                                                       'Приветствуем нового участника <i>{}</i>'.format(
+                                                           update.message.from_user.first_name if update.message.from_user.first_name != None and update.message.from_user.first_name != '' else update.message.from_user.username),
                                                        parse_mode='Html')
 
                         # save message to db
@@ -170,8 +175,10 @@ while loop:
                                 mp3_to_publish = ''
                                 mp3_to_publish, mp3_duration = downloader.download_mp3(update.message.text[8:])
                                 if mp3_to_publish != '':
-                                    published_ids = funcs.publish_lesson(bot, update.message.from_user.id, [mp3_to_publish],
-                                                                         [update.message.text[8:]], duration=[mp3_duration])
+                                    published_ids = funcs.publish_lesson(bot, update.message.from_user.id,
+                                                                         [mp3_to_publish],
+                                                                         [update.message.text[8:]],
+                                                                         duration=[mp3_duration])
                                     try:
                                         _ = funcs.del_published_mp3(mp3_to_publish)
                                         bot.delete_message(update.message.chat.id, update.message.message_id)
@@ -179,7 +186,8 @@ while loop:
                                         funcs.message_to_db(update.message)
                                 else:
                                     bot.delete_message(update.message.chat.id, update.message.message_id)
-                                    bot.send_message(update.message.from_user.id, 'fail to download' + update.message.text[8:])
+                                    bot.send_message(update.message.from_user.id,
+                                                     'fail to download' + update.message.text[8:])
 
 
                             # reload all functions
