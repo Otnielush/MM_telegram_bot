@@ -25,6 +25,8 @@ build/
 develop-eggs/
 dist/
 downloads/
+DataBase/
+settings/
 eggs/
 .eggs/
 lib/
@@ -471,3 +473,5 @@ tmp*/
 **/training_data*/
 **/exp/
 *.tar
+
+.DS_Store
