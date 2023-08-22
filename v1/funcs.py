@@ -264,14 +264,14 @@ def vars_to_db(parameters):
 
     if len(params) < 3:
         return
-    with open('./settings/params.json', 'w') as pars:
+    with open('settings/params.json', 'w') as pars:
         params['youtube_inverval'] = params['youtube_inverval'].seconds
         params['last_parsed_date'] = params['last_parsed_date'].isoformat()
         pars.write(json.dumps(params))
 
 
 def vars_from_db():
-    with open('./settings/params.json', 'r') as pars:
+    with open('settings/params.json', 'r') as pars:
         try:
             params = json.load(pars)
             params['youtube_inverval'] = datetime.timedelta(seconds=params['youtube_inverval'])

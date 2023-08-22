@@ -24,9 +24,9 @@ pyidol.cpp
 build/
 develop-eggs/
 dist/
-downloads/
-DataBase/
-settings/
+v1/downloads/
+v1/DataBase/
+v1/settings/
 eggs/
 .eggs/
 lib/
