@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand
 from requests import get
 from re import findall
 from youtuber.models import Lesson
+from django.db import IntegrityError
 
 
 class Command(BaseCommand):
@@ -21,8 +22,11 @@ class Command(BaseCommand):
                 count_saved_videos = 0
                 for video in videos:
                     lesson = Lesson(youtube_id=video)
-                    lesson.save()
-                    count_saved_videos = count_saved_videos + 1
+                    try:
+                        lesson.save()
+                        count_saved_videos = count_saved_videos + 1
+                    except IntegrityError:
+                        print("Video already saved!")
 
             self.stdout.write(
                 self.style.SUCCESS('Saved "%s" videos' % count_saved_videos)
