@@ -4,7 +4,6 @@ certifi==2023.7.22
 charset-normalizer==3.2.0
 click==8.1.7
 Django==4.2.4
-feedparser==6.0.10
 idna==3.4
 importlib-metadata==6.8.0
 itsdangerous==2.1.2
