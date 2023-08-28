@@ -26,7 +26,7 @@ class Command(BaseCommand):
                         lesson.save()
                         count_saved_videos = count_saved_videos + 1
                     except IntegrityError:
-                        print("Video already saved!")
+                        continue
 
             self.stdout.write(
                 self.style.SUCCESS('Saved "%s" videos' % count_saved_videos)
