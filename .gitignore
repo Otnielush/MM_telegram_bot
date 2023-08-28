@@ -476,3 +476,4 @@ tmp*/
 
 .DS_Store
 migrations/
+media/
