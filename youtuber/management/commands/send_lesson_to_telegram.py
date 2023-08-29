@@ -38,7 +38,8 @@ class Command(BaseCommand):
                     settings.MM_CHAT_ID,
                     youtube_message,
                     parse_mode='MarkdownV2',
-                    disable_notification=True
+                    disable_notification=True,
+                    disable_web_page_preview=True
                 )
 
                 audio_message = bot.send_audio(
