@@ -42,7 +42,12 @@ class Command(BaseCommand):
         Telling jewish date to chat
         """
         date = say_date()
-        bot.send_message(settings.MM_CHAT_ID, date, parse_mode='Html')
+        bot.send_message(
+            settings.MM_CHAT_ID,
+            date,
+            parse_mode='Html',
+            disable_notification=True
+        )
 
         self.stdout.write(
             self.style.SUCCESS('Successfully posted: "%s"' % date)

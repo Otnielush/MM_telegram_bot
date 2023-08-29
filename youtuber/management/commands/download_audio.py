@@ -13,7 +13,7 @@ class Command(BaseCommand):
         """
         Check for saved lessons without audio and download first of them
         """
-        lessons_without_audio = Lesson.objects.filter(is_published=False).filter(skip=False).filter(audio_file='')
+        lessons_without_audio = Lesson.objects.filter(is_published=False).filter(is_downloaded=False).filter(skip=False)
 
         if len(lessons_without_audio) > 0:
             lesson = lessons_without_audio.last()
@@ -21,6 +21,7 @@ class Command(BaseCommand):
             try:
                 yt = YouTube(f'http://youtube.com/watch?v={lesson.youtube_id}')
                 title = yt.title
+                duration = yt.length
                 streams = yt.streams.filter(mime_type="audio/mp4")
 
                 # Find stream with highest file size, but less than 50Mb due to Telegram limitations
@@ -37,7 +38,9 @@ class Command(BaseCommand):
 
                     # Saving results to DB
                     lesson.title = title
+                    lesson.duration = duration
                     lesson.audio_file = f'audio/{title}.m4a'
+                    lesson.is_downloaded = True
                     lesson.save()
 
                     self.stdout.write(
@@ -45,6 +48,7 @@ class Command(BaseCommand):
                     )
                 else:
                     lesson.title = title
+                    lesson.duration = duration
                     lesson.skip = True
                     lesson.save()
 
