@@ -3,6 +3,7 @@ from youtuber.models import Lesson
 from pytube import YouTube
 from pytube.exceptions import VideoUnavailable
 import os
+import unicodedata
 from mmtelegrambot.settings import MEDIA_ROOT
 
 
@@ -20,7 +21,7 @@ class Command(BaseCommand):
 
             try:
                 yt = YouTube(f'http://youtube.com/watch?v={lesson.youtube_id}')
-                title = yt.title
+                title = unicodedata.normalize('NFC', yt.title)
                 duration = yt.length
                 streams = yt.streams.filter(mime_type="audio/mp4")
 
