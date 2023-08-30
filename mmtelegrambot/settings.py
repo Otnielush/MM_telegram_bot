@@ -133,6 +133,5 @@ MEDIA_URL = '/media/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Config
-TEST_MODE = os.getenv("TEST_MODE")
 MM_CHAT_ID = os.getenv("CHAT_ID")
 TOKEN_BOT = os.getenv("TOKEN_BOT")
