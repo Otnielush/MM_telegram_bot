@@ -46,10 +46,10 @@ def telegram_bot(request):
                             return HttpResponse('ok')
                         except:
                             return HttpResponseBadRequest('Bad Request')
-            elif 'text' in update['message']:
+            else:
                 user_id = update['message']['from']['id']
                 date = update['message']['date']
-                text = update['message']['text']
+                text = update['message'].get('text')
 
                 message = Message(
                     message_id=message_id,
