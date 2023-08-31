@@ -1,5 +1,7 @@
 from django.core.management.base import BaseCommand
 from youtuber.models import Lesson
+from calendarer.models import Date
+from datetime import date
 from mmtelegrambot import settings
 from telebot import TeleBot
 from youtuber.utils import escape_str
@@ -54,6 +56,12 @@ class Command(BaseCommand):
                 if audio_message.message_id:
                     lesson.is_published = True
                     lesson.save()
+
+                    current_date = date.today()
+                    current_date_record = Date.objects.filter(date=current_date)
+                    if len(current_date_record) > 0 and not current_date_record[0].has_lessons:
+                        current_date_record[0].has_lessons = True
+                        current_date_record[0].save()
 
                     self.stdout.write(
                         self.style.SUCCESS(f'Audio lesson {lesson.title} sent to Telegram')

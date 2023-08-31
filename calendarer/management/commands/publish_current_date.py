@@ -1,12 +1,10 @@
 from django.core.management.base import BaseCommand
-from mmtelegrambot import settings
 from datetime import datetime
 from requests import get
 import json
-from telebot import TeleBot
-
-
-bot = TeleBot(settings.TOKEN_BOT)
+from youtuber.utils import send_api_request
+from mmtelegrambot.settings import MM_CHAT_ID
+from calendarer.models import Date
 
 
 def say_date():
@@ -42,12 +40,24 @@ class Command(BaseCommand):
         Telling jewish date to chat
         """
         date = say_date()
-        bot.send_message(
-            settings.MM_CHAT_ID,
-            date,
-            parse_mode='Html',
-            disable_notification=True
-        )
+
+        date_message = send_api_request("sendMessage", {
+            'chat_id': MM_CHAT_ID,
+            'text': date,
+            'parse_mode': 'Html',
+            'disable_notification': True
+        })
+
+        response = date_message.json()
+        if response['ok']:
+            message_id = response['result']['message_id']
+
+            date_record = Date(message_id=message_id)
+
+            try:
+                date_record.save()
+            except:
+                print(f'Error while saving Date message {message_id}')
 
         self.stdout.write(
             self.style.SUCCESS('Successfully posted: "%s"' % date)
