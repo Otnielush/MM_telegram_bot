@@ -43,6 +43,7 @@ INSTALLED_APPS = [
 
     'calendarer',
     'youtuber',
+    'cleaner',
 ]
 
 MIDDLEWARE = [
@@ -136,3 +137,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Config
 MM_CHAT_ID = os.getenv("CHAT_ID")
 TOKEN_BOT = os.getenv("TOKEN_BOT")
+TELEGRAM_API_URL = f'https://api.telegram.org/bot{TOKEN_BOT}/'
+URL = os.getenv("WEBHOOK_URL")
