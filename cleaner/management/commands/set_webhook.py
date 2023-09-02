@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
-import requests
-from mmtelegrambot.settings import TELEGRAM_API_URL, URL
+from youtuber.utils import send_api_request
+from mmtelegrambot.settings import TELEGRAM_API_URL, URL, WEBHOOK_SECRET_TOKEN
 
 
 class Command(BaseCommand):
@@ -10,8 +10,11 @@ class Command(BaseCommand):
         """
         Set telegram bot webhook
         """
-        response = requests.post(TELEGRAM_API_URL + "setWebhook?url=" + URL).json()
+        response = send_api_request('setWebhook', {
+            'url': URL,
+            'secret_token': WEBHOOK_SECRET_TOKEN
+        })
 
         self.stdout.write(
-            self.style.SUCCESS(f"{response}")
+            self.style.SUCCESS(f"{response.json()}")
         )

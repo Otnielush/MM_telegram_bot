@@ -139,3 +139,4 @@ MM_CHAT_ID = os.getenv("CHAT_ID")
 TOKEN_BOT = os.getenv("TOKEN_BOT")
 TELEGRAM_API_URL = f'https://api.telegram.org/bot{TOKEN_BOT}/'
 URL = os.getenv("WEBHOOK_URL")
+WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN")

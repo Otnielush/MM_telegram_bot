@@ -9,6 +9,10 @@ from youtuber.utils import escape_str, send_api_request
 @csrf_exempt
 def telegram_bot(request):
     if request.method == 'POST':
+        secret_token = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
+        if secret_token is not None:
+            print(secret_token)
+
         update = json.loads(request.body.decode('utf-8'))
         chat_id = update['message']['chat']['id']
         message_id = update['message']['message_id']
