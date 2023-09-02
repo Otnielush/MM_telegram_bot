@@ -15,7 +15,7 @@ class Command(BaseCommand):
         """
         count_deleted_messages = 0
         older_than_24_hours = datetime.now() - timedelta(hours=24)
-        old_messages = Message.objects.filter(Q(time_added__lte=older_than_24_hours))
+        old_messages = Message.objects.filter(Q(is_deleted=False) & Q(time_added__lte=older_than_24_hours))
 
         if len(old_messages) > 0:
             for message in old_messages:
