@@ -29,7 +29,7 @@ def say_date():
     date['hmonthInt'] = hMonthInt[date['hm']]
 
     # date['Hd'], date['HmonthRu'], date['HmonthInt'], date['Gd'], date['Gm'], date['Gy']
-    return "<b>{hd} {hmonthRu} ({hmonthInt})  /  {gd}.{gm}.{gy}</b>".format(**date)
+    return "<b>🗓 {hd} {hmonthRu} ({hmonthInt}) {hy} / {gd}.{gm}.{gy}</b>".format(**date)
 
 
 class Command(BaseCommand):
