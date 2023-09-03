@@ -39,26 +39,31 @@ class Command(BaseCommand):
         """
         Telling jewish date to chat
         """
-        date = say_date()
+        try:
+            date = say_date()
 
-        date_message = send_api_request("sendMessage", {
-            'chat_id': MM_CHAT_ID,
-            'text': date,
-            'parse_mode': 'Html',
-            'disable_notification': True
-        })
+            date_message = send_api_request("sendMessage", {
+                'chat_id': MM_CHAT_ID,
+                'text': date,
+                'parse_mode': 'Html',
+                'disable_notification': True
+            })
 
-        response = date_message.json()
-        if response['ok']:
-            message_id = response['result']['message_id']
+            response = date_message.json()
+            if response['ok']:
+                message_id = response['result']['message_id']
 
-            date_record = Date(message_id=message_id)
+                date_record = Date(message_id=message_id)
 
-            try:
-                date_record.save()
-            except:
-                print(f'Error while saving Date message {message_id}')
+                try:
+                    date_record.save()
+                except:
+                    print(f'Error while saving Date message {message_id}')
 
-        self.stdout.write(
-            self.style.SUCCESS('Successfully posted: "%s"' % date)
-        )
+            self.stdout.write(
+                self.style.SUCCESS('Successfully posted: "%s"' % date)
+            )
+        except:
+            self.stdout.write(
+                self.style.SUCCESS('Error while trying to post current date')
+            )
