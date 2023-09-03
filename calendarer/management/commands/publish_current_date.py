@@ -21,15 +21,16 @@ def say_date():
 
     date_now = datetime.now().date()
     response = get(
-        "https://www.hebcal.com/converter/?cfg=json&gy={}&gm={}&gd={}&g2h=1".format(date_now.year, date_now.month,
-                                                                                    date_now.day))
+        "https://www.hebcal.com/converter/?cfg=json&gy={}&gm={}&gd={}&g2h=1&lg=ru".format(date_now.year, date_now.month,
+                                                                                          date_now.day))
     date = json.loads(response.text)
 
     date['hmonthRu'] = hMonth[date['hm']]
     date['hmonthInt'] = hMonthInt[date['hm']]
+    date['heventsRu'] = "\n".join(date['events'])
 
     # date['Hd'], date['HmonthRu'], date['HmonthInt'], date['Gd'], date['Gm'], date['Gy']
-    return "<b>🗓 {hd} {hmonthRu} ({hmonthInt}) {hy} / {gd}.{gm}.{gy}</b>".format(**date)
+    return "<b>🗓 {hd} {hmonthRu} ({hmonthInt}) {hy} / {gd}.{gm}.{gy}</b>\n{heventsRu}".format(**date)
 
 
 class Command(BaseCommand):
