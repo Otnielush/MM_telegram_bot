@@ -5,6 +5,7 @@ import json
 from youtuber.utils import send_api_request
 from mmtelegrambot.settings import MM_CHAT_ID
 from calendarer.models import Date
+from youtuber.utils import escape_str
 
 
 def say_date():
@@ -30,7 +31,11 @@ def say_date():
     date['heventsRu'] = "\n".join(date['events'])
 
     # date['Hd'], date['HmonthRu'], date['HmonthInt'], date['Gd'], date['Gm'], date['Gy']
-    return "<b>🗓 {hd} {hmonthRu} ({hmonthInt}) {hy} / {gd}.{gm}.{gy}</b>\n{heventsRu}".format(**date)
+    date_str = "🗓 {hd} {hmonthRu} ({hmonthInt}) {hy} / {gd}.{gm}.{gy}".format(**date)
+    date_str = escape_str(date_str)
+    events_str = escape_str(date['heventsRu'])
+
+    return f"*{date_str}*\n{events_str}"
 
 
 class Command(BaseCommand):
@@ -46,7 +51,7 @@ class Command(BaseCommand):
             date_message = send_api_request("sendMessage", {
                 'chat_id': MM_CHAT_ID,
                 'text': date,
-                'parse_mode': 'Html',
+                'parse_mode': 'MarkdownV2',
                 'disable_notification': True
             })
 
