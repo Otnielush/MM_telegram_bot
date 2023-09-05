@@ -50,18 +50,18 @@ class Command(BaseCommand):
                 else:
                     lesson.title = title
                     lesson.duration = duration
-                    lesson.skip = True
+                    lesson.error_count = lesson.error_count + 1
                     lesson.save()
 
                     self.stdout.write(
-                        self.style.SUCCESS(f'Filesize of {title} is higher then 50Mb, skipping.')
+                        self.style.SUCCESS(f'Filesize of {title} > 50Mb, error_count: {lesson.error_count}.')
                     )
             except VideoUnavailable:
-                lesson.skip = True
+                lesson.error_count = lesson.error_count + 1
                 lesson.save()
 
                 self.stdout.write(
-                    self.style.SUCCESS(f'Video {lesson.youtube_id} is unavaialable, skipping.')
+                    self.style.SUCCESS(f'Video {lesson.youtube_id} is unavaialable, error_count: {lesson.error_count}.')
                 )
             except:
                 lesson.error_count = lesson.error_count + 1
