@@ -24,9 +24,12 @@ class Command(BaseCommand):
                         'chat_id': MM_CHAT_ID,
                         'message_id': message.message_id
                     })
-                    if is_deleted:
+                    result = is_deleted.json()
+                    if result.get('ok', None):
                         message.is_deleted = True
                         message.save()
+                    else:
+                        print(f"Error while deleting message {message.message_id}, result: {result}")
 
                     count_deleted_messages = count_deleted_messages + 1
                 except:
