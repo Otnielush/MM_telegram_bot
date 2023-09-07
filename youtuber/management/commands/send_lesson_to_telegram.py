@@ -36,7 +36,7 @@ class Command(BaseCommand):
             try:
                 hash_name = make_hash_name(name)
                 youtube_message = make_youtube_link_msg(lesson.title, lesson.youtube_id, hash_name)
-                bot.send_message(
+                result = bot.send_message(
                     settings.MM_CHAT_ID,
                     youtube_message,
                     parse_mode='MarkdownV2',
@@ -44,31 +44,37 @@ class Command(BaseCommand):
                     disable_web_page_preview=True
                 )
 
-                audio_message = bot.send_audio(
-                    chat_id=settings.MM_CHAT_ID,
-                    audio=lesson.audio_file,
-                    duration=lesson.duration,
-                    performer=name.strip(),
-                    title=title.strip(),
-                    disable_notification=True
-                )
-
-                if audio_message.message_id:
-                    lesson.is_published = True
-                    lesson.save()
-
-                    current_date = date.today()
-                    current_date_record = Date.objects.filter(date=current_date)
-                    if len(current_date_record) > 0 and not current_date_record[0].has_lessons:
-                        current_date_record[0].has_lessons = True
-                        current_date_record[0].save()
-
-                    self.stdout.write(
-                        self.style.SUCCESS(f'Audio lesson {lesson.title} sent to Telegram')
+                try:
+                    audio_message = bot.send_audio(
+                        chat_id=settings.MM_CHAT_ID,
+                        audio=lesson.audio_file,
+                        duration=lesson.duration,
+                        performer=name.strip(),
+                        title=title.strip(),
+                        disable_notification=True
                     )
-                else:
+
+                    if audio_message.message_id:
+                        lesson.is_published = True
+                        lesson.save()
+
+                        current_date = date.today()
+                        current_date_record = Date.objects.filter(date=current_date)
+                        if len(current_date_record) > 0 and not current_date_record[0].has_lessons:
+                            current_date_record[0].has_lessons = True
+                            current_date_record[0].save()
+
+                        self.stdout.write(
+                            self.style.SUCCESS(f'Audio lesson {lesson.title} sent to Telegram')
+                        )
+                    else:
+                        self.stdout.write(
+                            self.style.SUCCESS(f'Error while sending audio lesson {lesson.title}. You need to delete '
+                                               f'sent video message: {result.message_id}')
+                        )
+                except:
                     self.stdout.write(
-                        self.style.SUCCESS(f'Error while sending audio lesson {lesson.title}')
+                        self.style.SUCCESS(f'Unknown Error while sending audio lesson {lesson.title}: {audio_message.json()}. You need to delete sent video message: {result.message_id}')
                     )
             except:
                 self.stdout.write(
