@@ -5,6 +5,10 @@ from datetime import date
 from mmtelegrambot import settings
 from youtuber.utils import escape_str, send_api_request
 from cleaner.models import Message
+from telebot import TeleBot
+
+
+bot = TeleBot(settings.TOKEN_BOT)
 
 
 def make_youtube_link_msg(title, youtube_id, hash_name):
@@ -58,17 +62,16 @@ class Command(BaseCommand):
                 video_message_response = result.json()
 
                 if video_message_response['ok']:
-                    audio_message = send_api_request("sendAudio", {
-                        'chat_id': settings.MM_CHAT_ID,
-                        'audio': lesson.audio_file,
-                        'duration': lesson.duration,
-                        'performer': name.strip(),
-                        'title': title.strip(),
-                        'disable_notification': True
-                    })
+                    audio_message_response = bot.send_audio(
+                        chat_id=settings.MM_CHAT_ID,
+                        audio=lesson.audio_file,
+                        duration=lesson.duration,
+                        performer=name.strip(),
+                        title=title.strip(),
+                        disable_notification=True
+                    )
 
-                    audio_message_response = audio_message.json()
-                    if audio_message_response['ok']:
+                    if audio_message_response.message_id:
                         lesson.is_published = True
                         lesson.save()
 
@@ -95,7 +98,7 @@ class Command(BaseCommand):
                     )
             except:
                 # Handle case then video message sent, but audio message not
-                if video_message_response.get('ok', False) and not audio_message_response.get('ok', False):
+                if video_message_response.get('ok', False) and not audio_message_response.message_id:
                     save_video_message(video_message_response)
 
                     self.stdout.write(
