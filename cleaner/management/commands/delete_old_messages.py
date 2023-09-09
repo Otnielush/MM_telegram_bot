@@ -15,7 +15,7 @@ class Command(BaseCommand):
         """
         count_deleted_messages = 0
         older_than_24_hours = datetime.now() - timedelta(hours=24)
-        old_messages = Message.objects.filter(Q(is_deleted=False) & Q(time_added__lte=older_than_24_hours))
+        old_messages = Message.objects.filter(Q(is_deleted=False) & Q(skip=False) & Q(time_added__lte=older_than_24_hours))
 
         if len(old_messages) > 0:
             for message in old_messages:
@@ -31,9 +31,15 @@ class Command(BaseCommand):
 
                         count_deleted_messages = count_deleted_messages + 1
                     else:
+                        message.error_count = message.error_count + 1
+                        message.save()
+
                         print(f"Error while deleting message {message.message_id}, result: {result}")
 
                 except:
+                    message.error_count = message.error_count + 1
+                    message.save()
+
                     print(f"Error while deleting message {message.message_id}")
 
         self.stdout.write(

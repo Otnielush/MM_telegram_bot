@@ -8,6 +8,8 @@ class MessageAdmin(admin.ModelAdmin):
         'text',
         'time_added',
         'is_deleted',
+        'error_count',
+        'skip',
     )
     list_display_links = ('message_id',)
     list_filter = ('is_deleted',)
