@@ -24,7 +24,9 @@ pyidol.cpp
 build/
 develop-eggs/
 dist/
-downloads/
+v1/downloads/
+v1/DataBase/
+v1/settings/
 eggs/
 .eggs/
 lib/
@@ -471,3 +473,7 @@ tmp*/
 **/training_data*/
 **/exp/
 *.tar
+
+.DS_Store
+migrations/
+media/

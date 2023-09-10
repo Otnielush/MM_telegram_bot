@@ -25,14 +25,14 @@ def parse_new_videos_MM(max=None, till_date=None, parsed_ids=None):
     yt_objects = list()
     titles = list()
 
-    if max == None:
+    if max is None:
         max = len(videos)
 
-    if max != None:
+    if max is not None:
         print('{} videos found.'.format(max), end=' ')
         # print(videos)
 
-    if till_date != None:
+    if till_date is not None:
         if type(till_date) == str:
             till_date = datetime.fromisoformat(till_date)
         else:
@@ -42,15 +42,14 @@ def parse_new_videos_MM(max=None, till_date=None, parsed_ids=None):
         #     print(type(till_date))
         #     till_date = None
 
-
     print('Parsing: ', end='')
 
     for i in range(max):
-        if parsed_ids != None:
+        if parsed_ids is not None:
             if videos[i] in parsed_ids:
                 print('-', end=' ')
                 continue
-        print(i+1, end=', ')
+        print(i + 1, end=', ')
 
         connects = 0
         while connects < 3:
@@ -72,9 +71,8 @@ def parse_new_videos_MM(max=None, till_date=None, parsed_ids=None):
         else:
             date = yt_obj.publish_date
 
-
         # if date reached
-        if till_date != None and date != None:
+        if till_date is not None and date is not None:
             # print(datetime.fromisoformat(date), till_date)
             if date < till_date:
                 ids = ids[:i]
@@ -125,12 +123,18 @@ def cleaner_txt(txt):
 
 # Jewish date parser
 # "https://www.hebcal.com/converter/?cfg=json&gy=2011&gm=6&gd=2&g2h=1"
-hMonth = {"Nisan": "Нисан", "Iyyar": "Ияр", "Sivan": "Сиван", "Tamuz": "Тамуз", "Av": "Ав", "Elul": "Элуль", "Tishrei": "Тишрей", "Cheshvan": "Хешван", "Kislev": "Кислев", "Tevet": "Тевет", "Sh'vat": "Шват", "Adar I": "Адар 1", "Adar II": "Адар 2", "Adar": "Адар"}
-hMonthInt = {"Nisan": 1, "Iyyar": 2, "Sivan": 3, "Tamuz": 4, "Av": 5, "Elul": 6, "Tishrei": 7, "Cheshvan": 8, "Kislev": 9, "Tevet": 10, "Sh'vat": 11, "Adar I": 12, "Adar II": 13, "Adar": 12}
+hMonth = {"Nisan": "Нисан", "Iyyar": "Ияр", "Sivan": "Сиван", "Tamuz": "Тамуз", "Av": "Ав", "Elul": "Элуль",
+          "Tishrei": "Тишрей", "Cheshvan": "Хешван", "Kislev": "Кислев", "Tevet": "Тевет", "Sh'vat": "Шват",
+          "Adar I": "Адар 1", "Adar II": "Адар 2", "Adar": "Адар"}
+hMonthInt = {"Nisan": 1, "Iyyar": 2, "Sivan": 3, "Tamuz": 4, "Av": 5, "Elul": 6, "Tishrei": 7, "Cheshvan": 8,
+             "Kislev": 9, "Tevet": 10, "Sh'vat": 11, "Adar I": 12, "Adar II": 13, "Adar": 12}
+
 
 def say_date():
     date_now = datetime.now().date()
-    response = get("https://www.hebcal.com/converter/?cfg=json&gy={}&gm={}&gd={}&g2h=1".format(date_now.year, date_now.month, date_now.day))
+    response = get(
+        "https://www.hebcal.com/converter/?cfg=json&gy={}&gm={}&gd={}&g2h=1".format(date_now.year, date_now.month,
+                                                                                    date_now.day))
     date = json.loads(response.text)
 
     date['hmonthRu'] = hMonth[date['hm']]
