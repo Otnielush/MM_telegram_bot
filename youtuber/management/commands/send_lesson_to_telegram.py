@@ -12,9 +12,9 @@ bot = TeleBot(settings.TOKEN_BOT)
 
 
 def make_youtube_link_msg(title, youtube_id, hash_name):
-    hash_name = escape_str(hash_name)
+    hash_name_str = f'\n\n{escape_str(hash_name)}' if hash_name else ''
     title = escape_str(title)
-    return f'📺 [{title}](https://youtu.be/{youtube_id})\n\n{hash_name}'
+    return f'📺 [{title}](https://youtu.be/{youtube_id}){hash_name_str}'
 
 
 def make_hash_name(name):
@@ -45,12 +45,17 @@ class Command(BaseCommand):
 
         if len(unpublished_lessons) > 0:
             lesson = unpublished_lessons.last()
-            [name, title] = lesson.title.split('.', 1)
+            result = lesson.title.split('.', 1)
+            if len(result) == 2:
+                [name, title] = result
+            else:
+                [title] = result
+                name = None
             video_message_response = {}
             audio_message_response = {}
 
             try:
-                hash_name = make_hash_name(name)
+                hash_name = make_hash_name(name) if name else None
                 youtube_message = make_youtube_link_msg(lesson.title, lesson.youtube_id, hash_name)
                 result = send_api_request("sendMessage", {
                     'chat_id': settings.MM_CHAT_ID,
@@ -66,7 +71,7 @@ class Command(BaseCommand):
                         chat_id=settings.MM_CHAT_ID,
                         audio=lesson.audio_file,
                         duration=lesson.duration,
-                        performer=name.strip(),
+                        performer=name.strip() if name else None,
                         title=title.strip(),
                         disable_notification=True
                     )
@@ -96,13 +101,14 @@ class Command(BaseCommand):
                     self.stdout.write(
                         self.style.SUCCESS(f'Video lesson {lesson.title} not sent. Response: {video_message_response}')
                     )
-            except:
+            except Exception as e:
+                print(e)
                 # Handle case then video message sent, but audio message not
-                if video_message_response.get('ok', False) and not audio_message_response.message_id:
+                if video_message_response.get('ok', False) and not audio_message_response.get('message_id', False):
                     save_video_message(video_message_response)
 
                     self.stdout.write(
-                        self.style.SUCCESS(f'Audio lesson {lesson.title} not sent. Video message saved')
+                        self.style.SUCCESS(f'Audio lesson {lesson.title} not sent. Video message saved.')
                     )
                 else:
                     self.stdout.write(
