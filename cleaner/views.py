@@ -50,6 +50,14 @@ def telegram_bot(request):
                                 return HttpResponse('ok')
                             except:
                                 return HttpResponseBadRequest('Bad Request')
+                elif 'pinned_message' in update['message']:
+                    pinned_message_id = update['message']['pinned_message']['message_id']
+                    try:
+                        message = Message.objects.get(message_id=pinned_message_id)
+                        message.skip = True
+                        message.save()
+                    except Exception as e:
+                        print(f'Error while skipping pinned message {message_id}:\n {e}')
                 else:
                     user_id = update['message']['from']['id']
                     date = update['message']['date']
