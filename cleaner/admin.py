@@ -6,7 +6,7 @@ class MessageAdmin(admin.ModelAdmin):
     list_display = (
         'message_id',
         'text',
-        'time_added',
+        'time_sent',
         'is_deleted',
         'error_count',
         'skip',
