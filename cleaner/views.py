@@ -1,6 +1,8 @@
 import json
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
+from datetime import datetime
+from django.utils import timezone
 from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN
 from .models import Message
 from youtuber.utils import escape_str, send_api_request
@@ -53,10 +55,16 @@ def telegram_bot(request):
                     date = update['message']['date']
                     text = update['message'].get('text')
 
+                    # Convert Unix timestamp to naive datetime in UTC
+                    time_sent = datetime.utcfromtimestamp(date)
+
+                    # Make the datetime aware in the local timezone
+                    time_sent = timezone.make_aware(time_sent)
+
                     message = Message(
                         message_id=message_id,
                         user_id=user_id,
-                        date=date,
+                        time_sent=time_sent,
                         text=text
                     )
 

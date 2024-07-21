@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from cleaner.models import Message
-from datetime import datetime, timedelta
-from django.db.models import Q
+from django.utils import timezone
+from datetime import timedelta
 from youtuber.utils import send_api_request
 from mmtelegrambot.settings import MM_CHAT_ID
 
@@ -14,8 +14,12 @@ class Command(BaseCommand):
         Delete old messages
         """
         count_deleted_messages = 0
-        older_than_24_hours = datetime.now() - timedelta(hours=24)
-        old_messages = Message.objects.filter(Q(is_deleted=False) & Q(skip=False) & Q(time_added__lte=older_than_24_hours))
+        older_than_24_hours = timezone.now() - timedelta(hours=24)
+        old_messages = Message.objects.filter(
+            is_deleted=False,
+            skip=False,
+            time_sent__lte=older_than_24_hours
+        )
 
         if len(old_messages) > 0:
             for message in old_messages:
@@ -36,11 +40,11 @@ class Command(BaseCommand):
 
                         print(f"Error while deleting message {message.message_id}, result: {result}")
 
-                except:
+                except Exception as e:
                     message.error_count = message.error_count + 1
                     message.save()
 
-                    print(f"Error while deleting message {message.message_id}")
+                    print(f"Error while deleting message {message.message_id}: \n {e}")
 
         self.stdout.write(
             self.style.SUCCESS(f'Successfully deleted {count_deleted_messages} messages')
