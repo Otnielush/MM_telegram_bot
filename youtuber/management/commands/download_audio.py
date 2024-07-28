@@ -1,11 +1,10 @@
 from django.core.management.base import BaseCommand
 from youtuber.models import Lesson
-from pytube import YouTube
-from pytube.exceptions import VideoUnavailable
 import os
 import unicodedata
 from mmtelegrambot.settings import MEDIA_ROOT
-
+import yt_dlp
+import time
 
 class Command(BaseCommand):
     help = 'Download audio track from YouTube lesson'
@@ -18,58 +17,51 @@ class Command(BaseCommand):
 
         if len(lessons_without_audio) > 0:
             lesson = lessons_without_audio.last()
+            youtube_id = lesson.youtube_id
+            youtube_url = f'http://youtube.com/watch?v={youtube_id}'
 
-            try:
-                yt = YouTube(f'http://youtube.com/watch?v={lesson.youtube_id}')
-                title = unicodedata.normalize('NFC', yt.title)
-                duration = yt.length
-                streams = yt.streams.filter(mime_type="audio/mp4")
+            def format_selector(ctx):
+                formats = ctx.get('formats')[::-1]
 
-                # Find stream with highest file size, but less than 50Mb due to Telegram limitations
-                filesizes = [float(item.filesize_mb) for item in streams]
-                max_number = max([num for num in filesizes if num < 50], default=None)
-                if max_number is not None:
-                    index = filesizes.index(max_number)
-                    stream = streams[index]
+                for f in formats:
+                    if f.get('ext') == 'm4a' and f.get('filesize_approx') and f['filesize_approx'] <= 50 * 1024 * 1024:
+                        return [f]
+                return None
 
-                    stream.download(
-                        output_path=os.path.join(MEDIA_ROOT, 'audio'),
-                        filename=f'{title}.m4a'
-                    )
+            ydl_opts = {
+                'format': format_selector,
+                'outtmpl': os.path.join(MEDIA_ROOT, 'audio', '%(id)s.%(ext)s'),
+                'quiet': True,
+            }
 
-                    # Saving results to DB
-                    lesson.title = title
-                    lesson.duration = duration
-                    lesson.audio_file = f'audio/{title}.m4a'
-                    lesson.is_downloaded = True
-                    lesson.save()
+            retry_count = 3
+            for attempt in range(retry_count):
+                try:
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        info_dict = ydl.extract_info(youtube_url, download=False)
+                        title = unicodedata.normalize('NFC', info_dict.get('title', ''))
+                        duration = info_dict.get('duration', 0)
 
-                    self.stdout.write(
-                        self.style.SUCCESS(f'Successfully download audio for lesson {title}')
-                    )
-                else:
-                    lesson.title = title
-                    lesson.duration = duration
-                    lesson.error_count = lesson.error_count + 1
-                    lesson.save()
+                        error_code = ydl.download(youtube_url)
 
-                    self.stdout.write(
-                        self.style.SUCCESS(f'Filesize of {title} > 50Mb, error_count: {lesson.error_count}.')
-                    )
-            except VideoUnavailable:
-                lesson.error_count = lesson.error_count + 1
-                lesson.save()
+                        # Saving results to DB
+                        lesson.title = title
+                        lesson.duration = duration
+                        lesson.audio_file = f"audio/{youtube_id}.m4a"
+                        lesson.is_downloaded = True
+                        lesson.save()
 
-                self.stdout.write(
-                    self.style.SUCCESS(f'Video {lesson.youtube_id} is unavaialable, error_count: {lesson.error_count}.')
-                )
-            except:
-                lesson.error_count = lesson.error_count + 1
-                lesson.save()
+                        print(f'Successfully downloaded audio for lesson {title}')
+                        break
+                except Exception as e:
+                    if attempt < retry_count - 1:
+                        time.sleep(5)  # Wait before retrying
+                        print(f'Retrying download for video {youtube_id} (attempt {attempt + 1}/{retry_count})')
+                    else:
+                        lesson.error_count = lesson.error_count + 1
+                        lesson.save()
 
-                self.stdout.write(
-                    self.style.SUCCESS(f'Unknown error while processing video {lesson.youtube_id}, error count: {lesson.error_count}.')
-                )
+                        print(f'Error while processing video {youtube_id}:\n {e}.\nError count: {lesson.error_count}.')
         else:
             self.stdout.write(
                 self.style.SUCCESS('No lessons without audio')
