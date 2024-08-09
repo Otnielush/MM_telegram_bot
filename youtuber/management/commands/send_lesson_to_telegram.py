@@ -11,15 +11,9 @@ from telebot import TeleBot
 bot = TeleBot(settings.TOKEN_BOT)
 
 
-def make_youtube_link_msg(title, youtube_id, hash_name):
-    hash_name_str = f'\n\n{escape_str(hash_name)}' if hash_name else ''
+def make_youtube_link_msg(title, youtube_id):
     title = escape_str(title)
-    return f'📺 [{title}](https://youtu.be/{youtube_id}){hash_name_str}'
-
-
-def make_hash_name(name):
-    name = name.replace(" ", "")
-    return f'#{name}'
+    return f'📺 [{title}](https://youtu.be/{youtube_id})'
 
 
 def save_video_message(video_message_response):
@@ -45,18 +39,13 @@ class Command(BaseCommand):
 
         if len(unpublished_lessons) > 0:
             lesson = unpublished_lessons.last()
-            result = lesson.title.split('.', 1)
-            if len(result) == 2:
-                [name, title] = result
-            else:
-                [title] = result
-                name = None
+            title = lesson.title
+            performer = "Махон Меир"
             video_message_response = {}
             audio_message_response = {}
 
             try:
-                hash_name = make_hash_name(name) if name else None
-                youtube_message = make_youtube_link_msg(lesson.title, lesson.youtube_id, hash_name)
+                youtube_message = make_youtube_link_msg(title, lesson.youtube_id)
                 result = send_api_request("sendMessage", {
                     'chat_id': settings.MM_CHAT_ID,
                     'text': youtube_message,
@@ -71,7 +60,7 @@ class Command(BaseCommand):
                         chat_id=settings.MM_CHAT_ID,
                         audio=lesson.audio_file,
                         duration=lesson.duration,
-                        performer=name.strip() if name else None,
+                        performer=performer,
                         title=title.strip(),
                         disable_notification=True
                     )
