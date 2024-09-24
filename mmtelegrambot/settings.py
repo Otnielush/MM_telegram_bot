@@ -141,3 +141,12 @@ TOKEN_BOT = os.getenv("TOKEN_BOT")
 TELEGRAM_API_URL = f'https://api.telegram.org/bot{TOKEN_BOT}/'
 URL = os.getenv("WEBHOOK_URL")
 WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN")
+
+OPENAI_KEY = os.getenv("OPENAI_KEY")
+NEO4J_URI = os.getenv("NEO4J_URI")
+NEO4J_DB = os.getenv("NEO4J_DB")
+neo4j_cred = os.getenv("NEO4J_AUTH")
+if neo4j_cred:
+    NEO4J_AUTH = tuple(item.strip() for item in neo4j_cred.split(','))
+else:
+    NEO4J_AUTH = None
