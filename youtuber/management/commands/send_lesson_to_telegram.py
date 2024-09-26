@@ -20,7 +20,7 @@ def make_youtube_link_msg(title, youtube_id, start_time=None, end_time=None):
     title = escape_str(title)
     if start_time:
         period = f'⏱{seconds_to_hhmmss(start_time)}-{seconds_to_hhmmss(end_time)}' if end_time else f'⏱{seconds_to_hhmmss(start_time)}'
-        return f'📺 [{title}](https://youtu.be/{youtube_id}?t={start_time}) {escape_str(period)}'
+        return f'📺 [{title}](https://youtu.be/{youtube_id}?t={start_time})\n{escape_str(period)}'
     return f'📺 [{title}](https://youtu.be/{youtube_id})'
 
 
