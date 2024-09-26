@@ -40,6 +40,6 @@ def make_result_message(result):
             end_time = round(item["end"]) if item["end"] > 0 else None
             msg = make_youtube_link_msg(title, youtube_id, start_time, end_time)
             item_strings.append(msg)
-        return ',\n'.join(item_strings)
+        return '\n\n'.join(item_strings)
 
     return "К сожалению, ничего не найдено"
