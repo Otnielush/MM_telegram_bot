@@ -6,6 +6,7 @@ from django.utils import timezone
 from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN
 from .models import Message
 from youtuber.utils import escape_str, send_api_request
+from .utils import make_sim_search, make_result_message
 
 
 @csrf_exempt
@@ -59,6 +60,24 @@ def telegram_bot(request):
                             message.save()
                         except Exception as e:
                             print(f'Error while skipping pinned message {message_id}:\n {e}')
+                    elif '#поиск' in update['message'].get('text'):
+                        text = update['message'].get('text')
+                        question = text.replace('#поиск', '').strip()
+                        # TODO: check question length
+                        try:
+                            result = make_sim_search(question)
+                            message = make_result_message(result)
+                            send_api_request("sendMessage", {
+                                'chat_id': MM_CHAT_ID,
+                                'text': message,
+                                'parse_mode': 'MarkdownV2',
+                                'disable_notification': True,
+                                'disable_web_page_preview': True,
+                                'reply_parameters': { 'message_id': message_id }
+                            })
+                        except Exception as e:
+                            print(e)
+                            return HttpResponseBadRequest('Bad Request')
                     else:
                         user_id = update['message']['from']['id']
                         date = update['message']['date']
