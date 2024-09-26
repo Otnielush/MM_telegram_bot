@@ -73,7 +73,7 @@ def telegram_bot(request):
                                 'parse_mode': 'MarkdownV2',
                                 'disable_notification': True,
                                 'disable_web_page_preview': True,
-                                'reply_parameters': { 'message_id': message_id }
+                                'reply_to_message_id': message_id
                             })
                         except Exception as e:
                             print(e)
