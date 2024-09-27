@@ -16,11 +16,12 @@ def seconds_to_hhmmss(seconds):
     seconds = int(seconds)
     return time.strftime('%H:%M:%S', time.gmtime(seconds))
 
-def make_youtube_link_msg(title, youtube_id, start_time=None, end_time=None):
+def make_youtube_link_msg(title, youtube_id, start_time=None, end_time=None, upload_date=None):
     title = escape_str(title)
     if start_time is not None:
         period = f'⏱{seconds_to_hhmmss(start_time)}-{seconds_to_hhmmss(end_time)}' if end_time else f'⏱{seconds_to_hhmmss(start_time)}'
-        return f'📺 [{title}](https://youtu.be/{youtube_id}?t={start_time})\n{escape_str(period)}'
+        date_str = f"\n🗓{upload_date.replace('-', '.')}" if upload_date is not None else ""
+        return f'📺 [{title}](https://youtu.be/{youtube_id}?t={start_time})\n{escape_str(period)}{date_str}'
     return f'📺 [{title}](https://youtu.be/{youtube_id})'
 
 
