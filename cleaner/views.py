@@ -60,24 +60,6 @@ def telegram_bot(request):
                             message.save()
                         except Exception as e:
                             print(f'Error while skipping pinned message {message_id}:\n {e}')
-                    elif '#поиск' in update['message'].get('text'):
-                        text = update['message'].get('text')
-                        question = text.replace('#поиск', '').strip()
-                        # TODO: check question length
-                        try:
-                            result = make_sim_search(question)
-                            message = make_result_message(result)
-                            send_api_request("sendMessage", {
-                                'chat_id': MM_CHAT_ID,
-                                'text': message,
-                                'parse_mode': 'MarkdownV2',
-                                'disable_notification': True,
-                                'disable_web_page_preview': True,
-                                'reply_to_message_id': message_id
-                            })
-                        except Exception as e:
-                            print(e)
-                            return HttpResponseBadRequest('Bad Request')
                     else:
                         user_id = update['message']['from']['id']
                         date = update['message']['date']
@@ -101,7 +83,25 @@ def telegram_bot(request):
                             return HttpResponse('ok')
                         except:
                             return HttpResponseBadRequest('Bad Request')
-
+                elif update['message']['chat']['type'] == 'private':
+                    if '/start' in update['message'].get('text'):
+                        pass
+                    elif '/search' in update['message'].get('text'):
+                        text = update['message'].get('text')
+                        question = text.replace('/search', '').strip()
+                        try:
+                            result = make_sim_search(question)
+                            message = make_result_message(result)
+                            send_api_request("sendMessage", {
+                                'chat_id': chat_id,
+                                'text': message,
+                                'parse_mode': 'MarkdownV2',
+                                'disable_web_page_preview': True,
+                                'reply_to_message_id': message_id
+                            })
+                        except Exception as e:
+                            print(e)
+                            return HttpResponseBadRequest('Bad Request')
             return HttpResponse('ok')
         else:
             return HttpResponseBadRequest('Bad Request')
