@@ -8,6 +8,24 @@ from .models import Message
 from youtuber.utils import escape_str, send_api_request
 from .utils import make_sim_search, make_result_message
 
+def handle_search_command(update, chat_id):
+    message_id = update['message']['message_id']
+    text = update['message'].get('text')
+    question = text.replace('/search', '').strip()
+    try:
+        result = make_sim_search(question)
+        message = make_result_message(result)
+        send_api_request("sendMessage", {
+            'chat_id': chat_id,
+            'text': message,
+            'parse_mode': 'MarkdownV2',
+            'disable_notification': True,
+            'disable_web_page_preview': True,
+            'reply_to_message_id': message_id
+        })
+    except Exception as e:
+        print(e)
+        return HttpResponseBadRequest('Bad Request')
 
 @csrf_exempt
 def telegram_bot(request):
@@ -60,6 +78,8 @@ def telegram_bot(request):
                             message.save()
                         except Exception as e:
                             print(f'Error while skipping pinned message {message_id}:\n {e}')
+                    elif '/search' in update['message'].get('text'):
+                        handle_search_command(update, MM_CHAT_ID)
                     else:
                         user_id = update['message']['from']['id']
                         date = update['message']['date']
@@ -87,21 +107,7 @@ def telegram_bot(request):
                     if '/start' in update['message'].get('text'):
                         pass
                     elif '/search' in update['message'].get('text'):
-                        text = update['message'].get('text')
-                        question = text.replace('/search', '').strip()
-                        try:
-                            result = make_sim_search(question)
-                            message = make_result_message(result)
-                            send_api_request("sendMessage", {
-                                'chat_id': chat_id,
-                                'text': message,
-                                'parse_mode': 'MarkdownV2',
-                                'disable_web_page_preview': True,
-                                'reply_to_message_id': message_id
-                            })
-                        except Exception as e:
-                            print(e)
-                            return HttpResponseBadRequest('Bad Request')
+                        handle_search_command(update, chat_id)
             return HttpResponse('ok')
         else:
             return HttpResponseBadRequest('Bad Request')
