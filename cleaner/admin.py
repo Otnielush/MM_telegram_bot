@@ -23,6 +23,7 @@ class QuestionAdmin(admin.ModelAdmin):
     }
     list_display = (
         'message_id',
+        'chat_id',
         'user_id',
         'text',
         'saved_at',

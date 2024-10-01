@@ -28,7 +28,8 @@ class Message(models.Model):
 
 
 class Question(models.Model):
-    message_id = models.IntegerField(unique=True, verbose_name="Message ID")
+    message_id = models.IntegerField(verbose_name="Message ID")
+    chat_id = models.IntegerField(blank=True, null=True, verbose_name="Chat ID")
     user_id = models.IntegerField(blank=True, null=True, verbose_name="User ID")
     text = models.TextField(blank=True, null=True, verbose_name="Text")
     sent_at = models.DateTimeField(default=timezone.now, verbose_name="Sent Date")

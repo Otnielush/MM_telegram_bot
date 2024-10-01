@@ -21,13 +21,14 @@ def get_date_time_sent(update):
 
 def handle_search_command(update, chat_id):
     user_id = update['message']['from']['id']
+    chat_id = update['message']['chat']['id']
     sent_at = get_date_time_sent(update)
     message_id = update['message']['message_id']
     text = update['message'].get('text')
     question = text.replace('/search', '').strip()
     try:
         result = make_sim_search(question)
-        save_result(message_id, user_id, sent_at, question, result)
+        save_result(message_id, user_id, chat_id, sent_at, question, result)
         message = make_result_message(result)
         send_api_request("sendMessage", {
             'chat_id': chat_id,

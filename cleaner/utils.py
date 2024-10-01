@@ -31,7 +31,7 @@ def make_sim_search(q):
                                         database_=NEO4J_DB)
     return result
 
-def save_result(message_id, user_id, sent_at, text, result):
+def save_result(message_id, user_id, chat_id, sent_at, text, result):
     if len(result):
         results = []
         for item in result:
@@ -45,6 +45,7 @@ def save_result(message_id, user_id, sent_at, text, result):
             Question.objects.create(
                 message_id = message_id,
                 user_id = user_id,
+                chat_id = chat_id,
                 sent_at = sent_at,
                 text = text,
                 result = results
