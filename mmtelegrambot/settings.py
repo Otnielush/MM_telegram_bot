@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    'django_json_widget',
+
     'calendarer',
     'youtuber',
     'cleaner',

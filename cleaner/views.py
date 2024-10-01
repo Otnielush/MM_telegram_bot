@@ -6,14 +6,28 @@ from django.utils import timezone
 from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN
 from .models import Message
 from youtuber.utils import escape_str, send_api_request
-from .utils import make_sim_search, make_result_message
+from .utils import make_sim_search, make_result_message, save_result
+
+def get_date_time_sent(update):
+    date = update['message']['date']
+
+    # Convert Unix timestamp to naive datetime in UTC
+    time_sent = datetime.utcfromtimestamp(date)
+
+    # Make the datetime aware in the local timezone
+    time_sent = timezone.make_aware(time_sent)
+
+    return time_sent
 
 def handle_search_command(update, chat_id):
+    user_id = update['message']['from']['id']
+    sent_at = get_date_time_sent(update)
     message_id = update['message']['message_id']
     text = update['message'].get('text')
     question = text.replace('/search', '').strip()
     try:
         result = make_sim_search(question)
+        save_result(message_id, user_id, sent_at, question, result)
         message = make_result_message(result)
         send_api_request("sendMessage", {
             'chat_id': chat_id,
@@ -82,14 +96,8 @@ def telegram_bot(request):
                         handle_search_command(update, MM_CHAT_ID)
                     else:
                         user_id = update['message']['from']['id']
-                        date = update['message']['date']
                         text = update['message'].get('text')
-
-                        # Convert Unix timestamp to naive datetime in UTC
-                        time_sent = datetime.utcfromtimestamp(date)
-
-                        # Make the datetime aware in the local timezone
-                        time_sent = timezone.make_aware(time_sent)
+                        time_sent = get_date_time_sent(update)
 
                         message = Message(
                             message_id=message_id,
