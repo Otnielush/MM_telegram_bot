@@ -36,7 +36,7 @@ def rate_limit(handler):
             name = get_user_name(update)
             send_user_notification(chat_id, f'{name}, вы превысили лимит на количество вопросов в сутки')
 
-            return False
+            return HttpResponse('ok')
 
         if request_count > 0 and time() - last_request_time < 30:
             name = get_user_name(update)
@@ -45,7 +45,7 @@ def rate_limit(handler):
             last_request_time = time()
             cache.set(cache_key, (request_count, first_request_time, last_request_time), timeout=86400)
 
-            return False
+            return HttpResponse('ok')
 
         if time() - first_request_time >= 86400:
             first_request_time = time()
