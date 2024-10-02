@@ -19,7 +19,7 @@ def get_date_time_sent(update):
 
     return time_sent
 
-def handle_search_command(update, chat_id):
+def handle_search_command(update):
     user_id = update['message']['from']['id']
     chat_id = update['message']['chat']['id']
     sent_at = get_date_time_sent(update)
@@ -94,7 +94,7 @@ def telegram_bot(request):
                         except Exception as e:
                             print(f'Error while skipping pinned message {message_id}:\n {e}')
                     elif '/search' in update['message'].get('text'):
-                        handle_search_command(update, MM_CHAT_ID)
+                        handle_search_command(update)
                     else:
                         user_id = update['message']['from']['id']
                         text = update['message'].get('text')
@@ -116,7 +116,7 @@ def telegram_bot(request):
                     if '/start' in update['message'].get('text'):
                         pass
                     elif '/search' in update['message'].get('text'):
-                        handle_search_command(update, chat_id)
+                        handle_search_command(update)
             return HttpResponse('ok')
         else:
             return HttpResponseBadRequest('Bad Request')
