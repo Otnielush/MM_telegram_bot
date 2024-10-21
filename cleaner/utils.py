@@ -27,9 +27,11 @@ def make_sim_search(q):
 
     embd = get_embedding(q)[0]
     result, _, _ = driver.execute_query(query_sim,
-                                        vector_index_name=VECTOR_INDEX_NAME, top_k=10, query_vector=embd,
+                                        vector_index_name=VECTOR_INDEX_NAME, top_k=30, query_vector=embd,
                                         database_=NEO4J_DB)
-    return result
+    if result is None or not isinstance(result, list):
+        return []
+    return result[:10]
 
 def save_result(message_id, user_id, chat_id, sent_at, text, result):
     if len(result):
