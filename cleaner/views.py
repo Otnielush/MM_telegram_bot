@@ -1,5 +1,8 @@
 import json
-from django.http import HttpResponse, HttpResponseBadRequest
+from time import time
+
+from django.core.cache import cache
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime
 from django.utils import timezone
@@ -7,6 +10,38 @@ from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN
 from .models import Message
 from youtuber.utils import escape_str, send_api_request
 from .utils import make_sim_search, make_result_message, save_result
+
+SHORT_TERM_LIMIT = 1       # maximum requests every 30 seconds
+SHORT_TERM_WINDOW = 30     # 30-second window
+
+DAILY_LIMIT = 20           # maximum requests per day
+DAILY_WINDOW = 86400       # 24-hour window (in seconds)
+
+def is_rate_limited(user_id):
+    """
+    Check if the user is rate-limited.
+    Returns a tuple of (rate_limited, message).
+    """
+    current_time = int(time())
+
+    short_term_cache_key = f"rate_limit_short:{user_id}"
+    last_request_time = cache.get(short_term_cache_key)
+
+    if last_request_time and current_time - last_request_time < SHORT_TERM_WINDOW:
+        time_remaining = SHORT_TERM_WINDOW - (current_time - last_request_time)
+        return True, f"Вы задаете вопросы слишком часто, попробуйте через {time_remaining} сек"
+
+    daily_cache_key = f"rate_limit_daily:{user_id}"
+    request_count = cache.get(daily_cache_key, 0)
+
+    if request_count >= DAILY_LIMIT:
+        return True, "Вы превысили суточный лимит в 20 вопросов. Пожалуйста, повторите вопрос завтра"
+
+    cache.set(short_term_cache_key, current_time, timeout=SHORT_TERM_WINDOW)
+    cache.set(daily_cache_key, request_count + 1, timeout=DAILY_WINDOW)
+
+    return False, None
+
 
 def get_date_time_sent(update):
     date = update['message']['date']
@@ -22,6 +57,21 @@ def get_date_time_sent(update):
 def handle_search_command(update):
     user_id = update['message']['from']['id']
     chat_id = update['message']['chat']['id']
+
+    rate_limited, limit_message = is_rate_limited(user_id)
+    if rate_limited:
+        try:
+            send_api_request('sendMessage', {
+                'chat_id': chat_id,
+                'text': escape_str(limit_message),
+                'parse_mode': 'MarkdownV2',
+                'disable_notification': True
+            })
+        except Exception as e:
+            print(e)
+
+        return JsonResponse({'error': 'Rate limit exceeded, user notified.'}, status=200)
+
     sent_at = get_date_time_sent(update)
     message_id = update['message']['message_id']
     text = update['message'].get('text')
