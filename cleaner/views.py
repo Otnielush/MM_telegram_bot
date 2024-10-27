@@ -57,6 +57,7 @@ def get_date_time_sent(update):
 def handle_search_command(update):
     user_id = update['message']['from']['id']
     chat_id = update['message']['chat']['id']
+    message_id = update['message']['message_id']
 
     rate_limited, limit_message = is_rate_limited(user_id)
     if rate_limited:
@@ -65,7 +66,8 @@ def handle_search_command(update):
                 'chat_id': chat_id,
                 'text': escape_str(limit_message),
                 'parse_mode': 'MarkdownV2',
-                'disable_notification': True
+                'disable_notification': True,
+                'reply_to_message_id': message_id
             })
         except Exception as e:
             print(e)
@@ -73,7 +75,6 @@ def handle_search_command(update):
         return JsonResponse({'error': 'Rate limit exceeded, user notified.'}, status=200)
 
     sent_at = get_date_time_sent(update)
-    message_id = update['message']['message_id']
     text = update['message'].get('text')
     question = text.replace('/search', '').strip()
     try:
