@@ -1,5 +1,6 @@
 import json
 from time import time
+import textwrap
 
 from django.core.cache import cache
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
@@ -93,6 +94,52 @@ def handle_search_command(update):
         print(e)
         return HttpResponseBadRequest('Bad Request')
 
+def handle_start_command(update):
+    chat_id = update['message']['chat']['id']
+    message = '''
+    Шалом! Я бот русскоязычного отделения Махон Меир. 
+    Вы можете написать вопрос в свободной форме, а я найду в каких уроках наших раввинов на YouTube может содержаться ответ.
+    Я пришлю список ссылок на уроки, с указанием тайм-кодов тех моментов урока, в которых может содержаться ответ на ваш вопрос.
+    Есть ограничения: 20 вопросов в сутки, и не чаще 1 вопроса в 30 секунд.
+    '''
+    message = textwrap.dedent(message)
+
+    try:
+        send_api_request("sendMessage", {
+            'chat_id': chat_id,
+            'text': escape_str(message),
+            'parse_mode': 'MarkdownV2',
+            'disable_notification': True,
+            'disable_web_page_preview': True
+        })
+        return HttpResponse('ok')
+    except Exception as e:
+        print(e)
+        return HttpResponseBadRequest('Bad Request')
+
+def handle_help_command(update):
+    chat_id = update['message']['chat']['id']
+    message = '''
+    ✅ Чтобы задать вопрос в личном чате с ботом, просто отправьте сообщение в свободной форме.
+    ✅ Чтобы задать вопрос в группе Махон Меир, начните текст сообщения с хештега #вопрос.
+    ⚠️ В сутки можно задать 20 вопросов, не чаще 1 вопроса в 30 секунд.
+    ✍️ Будем рады вашим идеям и замечаниям по работе нашего бота - пишите в группу Махон Меир: @machonmeir
+    '''
+    message = textwrap.dedent(message)
+
+    try:
+        send_api_request("sendMessage", {
+            'chat_id': chat_id,
+            'text': escape_str(message),
+            'parse_mode': 'MarkdownV2',
+            'disable_notification': True,
+            'disable_web_page_preview': True
+        })
+        return HttpResponse('ok')
+    except Exception as e:
+        print(e)
+        return HttpResponseBadRequest('Bad Request')
+
 @csrf_exempt
 def telegram_bot(request):
     if request.method == 'POST':
@@ -144,7 +191,7 @@ def telegram_bot(request):
                             message.save()
                         except Exception as e:
                             print(f'Error while skipping pinned message {message_id}:\n {e}')
-                    elif '/search' in update['message'].get('text'):
+                    elif '#вопрос' in update['message'].get('text'):
                         handle_search_command(update)
                     else:
                         user_id = update['message']['from']['id']
@@ -165,8 +212,10 @@ def telegram_bot(request):
                             return HttpResponseBadRequest('Bad Request')
                 elif update['message']['chat']['type'] == 'private':
                     if '/start' in update['message'].get('text'):
-                        pass
-                    elif '/search' in update['message'].get('text'):
+                        handle_start_command(update)
+                    elif '/help' in update['message'].get('text'):
+                        handle_help_command(update)
+                    else:
                         handle_search_command(update)
             return HttpResponse('ok')
         else:
