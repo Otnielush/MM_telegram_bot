@@ -13,7 +13,7 @@ if os.getenv("DEBUG", "True").lower() == 'false':
 Openai_key = os.getenv("OPENAI_KEY")
 client = openai.OpenAI(api_key=Openai_key)
 
-Neo4j_auth = os.getenv("NEO4J_AUTH")
+Neo4j_auth = tuple(os.getenv("NEO4J_AUTH").split(', '))
 Neo4j_url = os.getenv("NEO4J_URI")
 Neo4j_database = os.getenv("NEO4J_DB")
 Neo4j_embd_index = os.getenv("NEO4J_EMBD_INDEX")
