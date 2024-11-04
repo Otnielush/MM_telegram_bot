@@ -30,8 +30,9 @@ class Command(BaseCommand):
 
             ydl_opts = {
                 'format': format_selector,
-                'outtmpl': os.path.join(MEDIA_ROOT, 'audio', '%(id)s.%(ext)s'),
-                'quiet': True,
+                "outtmpl": "%(title)s #%(upload_date>%d-%m-%Y)s# [%(id)s].%(ext)s",
+                "quiet": True,
+                "no_warnings": True
             }
 
             retry_count = 3

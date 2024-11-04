@@ -31,9 +31,9 @@ class Command(BaseCommand):
             out = client.embeddings.create(input=text, model=model)
             return [o.embedding for o in out.data]
 
-        query_sim = """CALL db.index.vector.queryNodes($vector_index_name, $top_k, $query_vector) YIELD node, score 
+        query_sim = """CALL db.index.vector.queryNodes($vector_index_name, 30, $query_vector) YIELD node, score 
         RETURN node.lesson_name AS lesson_name, node.time_start AS start, node.time_end AS end, node.upload_date AS upload_date, 
-        node.youtube_id AS youtube_id, round(score * 1000) / 1000 AS search_score 
+        node.youtube_id AS youtube_id, round(score * 1000) / 1000 AS search_score LIMIT $top_k
         """
 
         embd = get_embedding(q)[0]
