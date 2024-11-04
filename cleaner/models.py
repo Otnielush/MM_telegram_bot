@@ -25,3 +25,21 @@ class Message(models.Model):
                 self.skip = True
 
         super(Message, self).save(*args, **kwargs)
+
+
+class Question(models.Model):
+    message_id = models.IntegerField(verbose_name="Message ID")
+    chat_id = models.IntegerField(blank=True, null=True, verbose_name="Chat ID")
+    user_id = models.IntegerField(blank=True, null=True, verbose_name="User ID")
+    text = models.TextField(blank=True, null=True, verbose_name="Text")
+    sent_at = models.DateTimeField(default=timezone.now, verbose_name="Sent Date")
+    saved_at = models.DateTimeField(auto_now_add=True, verbose_name="Added to DB")
+    result = models.JSONField(blank=True, null=True, verbose_name="Result")
+
+    def __str__(self):
+        return str(self.message_id)
+
+    class Meta:
+        verbose_name = 'Question'
+        verbose_name_plural = 'Questions'
+        ordering = ['-saved_at']

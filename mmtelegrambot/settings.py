@@ -26,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG")
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = json.loads(os.getenv("ALLOWED_HOSTS"))
 
@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'django_json_widget',
 
     'calendarer',
     'youtuber',
@@ -84,6 +86,15 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+# Cache
+# https://docs.djangoproject.com/en/4.2/topics/cache/#redis
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": os.getenv('REDIS_LOCATION'),
     }
 }
 
@@ -136,7 +147,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Config
 MM_CHAT_ID = os.getenv("CHAT_ID")
+ADMIN_ID = os.getenv("ADMIN_ID")
 TOKEN_BOT = os.getenv("TOKEN_BOT")
+BOT_MENTION = os.getenv("BOT_MENTION")
 TELEGRAM_API_URL = f'https://api.telegram.org/bot{TOKEN_BOT}/'
 URL = os.getenv("WEBHOOK_URL")
 WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN")
+
+OPENAI_KEY = os.getenv("OPENAI_KEY")
+NEO4J_URI = os.getenv("NEO4J_URI")
+NEO4J_DB = os.getenv("NEO4J_DB")
+neo4j_cred = os.getenv("NEO4J_AUTH")
+if neo4j_cred:
+    NEO4J_AUTH = tuple(item.strip() for item in neo4j_cred.split(','))
+else:
+    NEO4J_AUTH = None

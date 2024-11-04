@@ -12,7 +12,8 @@ class Command(BaseCommand):
         """
         response = send_api_request('setWebhook', {
             'url': URL,
-            'secret_token': WEBHOOK_SECRET_TOKEN
+            'secret_token': WEBHOOK_SECRET_TOKEN,
+            'allowed_updates': ["message"]
         })
 
         self.stdout.write(

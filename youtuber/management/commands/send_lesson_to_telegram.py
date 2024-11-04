@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand
 from youtuber.models import Lesson
 from calendarer.models import Date
 from datetime import date
+import time
 from mmtelegrambot import settings
 from youtuber.utils import escape_str, send_api_request
 from cleaner.models import Message
@@ -11,8 +12,16 @@ from telebot import TeleBot
 bot = TeleBot(settings.TOKEN_BOT)
 
 
-def make_youtube_link_msg(title, youtube_id):
+def seconds_to_hhmmss(seconds):
+    seconds = int(seconds)
+    return time.strftime('%H:%M:%S', time.gmtime(seconds))
+
+def make_youtube_link_msg(title, youtube_id, start_time=None, end_time=None, upload_date=None):
     title = escape_str(title)
+    if start_time is not None:
+        period = f'⏱{seconds_to_hhmmss(start_time)}-{seconds_to_hhmmss(end_time)}' if end_time else f'⏱{seconds_to_hhmmss(start_time)}'
+        date_str = f"🗓{escape_str(upload_date.replace('-', '.'))}\n" if upload_date is not None else ""
+        return f'{date_str}📺 [{title}](https://youtu.be/{youtube_id}?t={start_time})\n{escape_str(period)}'
     return f'📺 [{title}](https://youtu.be/{youtube_id})'
 
 
