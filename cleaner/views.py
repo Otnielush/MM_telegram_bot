@@ -7,7 +7,7 @@ from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime
 from django.utils import timezone
-from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN
+from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN, BOT_MENTION
 from .models import Message
 from youtuber.utils import escape_str, send_api_request
 from .utils import make_sim_search, make_result_message, save_result
@@ -77,7 +77,7 @@ def handle_search_command(update):
 
     sent_at = get_date_time_sent(update)
     text = update['message'].get('text')
-    question = text.replace('/search', '').strip()
+    question = text.strip()
     try:
         result = make_sim_search(question)
         save_result(message_id, user_id, chat_id, sent_at, question, result)
@@ -94,36 +94,46 @@ def handle_search_command(update):
         print(e)
         return HttpResponseBadRequest('Bad Request')
 
-def handle_start_command(update):
-    chat_id = update['message']['chat']['id']
-    message = '''
-    Шалом! Я бот русскоязычного отделения Махон Меир. 
-    Вы можете написать вопрос в свободной форме, а я найду в каких уроках наших раввинов на YouTube может содержаться ответ.
-    Я пришлю список ссылок на уроки, с указанием тайм-кодов тех моментов урока, в которых может содержаться ответ на ваш вопрос.
+def handle_start_command(chat_id, is_group=False):
+    message = f'''
+    {BOT_MENTION} поможет найти, в каких уроках на YouTube-канале Махон Меир может быть ответ на ваш вопрос.
+    Просто отправьте ваш вопрос в личный чат с ботом.
+    В ответ бот пришлет список ссылок на уроки с тайм-кодами, в которых может содержаться ответ на вопрос.
     Есть ограничения: 20 вопросов в сутки, и не чаще 1 вопроса в 30 секунд.
     '''
     message = textwrap.dedent(message)
 
     try:
-        send_api_request("sendMessage", {
+        msg_new = send_api_request("sendMessage", {
             'chat_id': chat_id,
             'text': escape_str(message),
             'parse_mode': 'MarkdownV2',
             'disable_notification': True,
             'disable_web_page_preview': True
         })
+
+        if is_group:
+            response = msg_new.json()
+            if response['ok']:
+                message_id = response['result']['message_id']
+                text = response['result']['text']
+
+                message = Message(
+                    message_id=message_id,
+                    text=text
+                )
+                message.save()
+
         return HttpResponse('ok')
     except Exception as e:
         print(e)
         return HttpResponseBadRequest('Bad Request')
 
-def handle_help_command(update):
-    chat_id = update['message']['chat']['id']
+def handle_help_command(chat_id):
     message = '''
-    ✅ Чтобы задать вопрос в личном чате с ботом, просто отправьте сообщение в свободной форме.
-    ✅ Чтобы задать вопрос в группе Махон Меир, начните текст сообщения с хештега #вопрос.
+    ✅ Чтобы задать вопрос, просто отправьте сообщение в свободной форме.
     ⚠️ В сутки можно задать 20 вопросов, не чаще 1 вопроса в 30 секунд.
-    ✍️ Будем рады вашим идеям и замечаниям по работе нашего бота - пишите в группу Махон Меир: @machonmeir
+    ✍️ Будем рады вашим идеям и замечаниям - пишите в группу Махон Меир: @machonmeir
     '''
     message = textwrap.dedent(message)
 
@@ -191,8 +201,6 @@ def telegram_bot(request):
                             message.save()
                         except Exception as e:
                             print(f'Error while skipping pinned message {message_id}:\n {e}')
-                    elif '#вопрос' in update['message'].get('text'):
-                        handle_search_command(update)
                     else:
                         user_id = update['message']['from']['id']
                         text = update['message'].get('text')
@@ -207,14 +215,18 @@ def telegram_bot(request):
 
                         try:
                             message.save()
+
+                            if '/start' in text or BOT_MENTION in text:
+                                handle_start_command(chat_id, is_group=True)
+                            
                             return HttpResponse('ok')
                         except:
                             return HttpResponseBadRequest('Bad Request')
                 elif update['message']['chat']['type'] == 'private':
                     if '/start' in update['message'].get('text'):
-                        handle_start_command(update)
+                        handle_start_command(chat_id)
                     elif '/help' in update['message'].get('text'):
-                        handle_help_command(update)
+                        handle_help_command(chat_id)
                     else:
                         handle_search_command(update)
             return HttpResponse('ok')
