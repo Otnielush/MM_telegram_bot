@@ -1,22 +1,15 @@
-import os
 from neo4j import GraphDatabase
 import openai
-from dotenv import load_dotenv, find_dotenv
+from mmtelegrambot.settings import OPENAI_KEY, NEO4J_URI, NEO4J_DB, NEO4J_AUTH, NEO4J_embd_index
 
 
-load_dotenv()
-# prod env if DEBUG
-if os.getenv("DEBUG", "True").lower() == 'false':
-    load_dotenv(find_dotenv(".env.prod"), override=True)
+# from dotenv import load_dotenv, find_dotenv
+# load_dotenv()
+# # prod env if DEBUG
+# if os.getenv("DEBUG", "True").lower() == 'false':
+#     load_dotenv(find_dotenv(".env.prod"), override=True)
 
-
-Openai_key = os.getenv("OPENAI_KEY")
-client = openai.OpenAI(api_key=Openai_key)
-
-Neo4j_auth = tuple(os.getenv("NEO4J_AUTH").split(', '))
-Neo4j_url = os.getenv("NEO4J_URI")
-Neo4j_database = os.getenv("NEO4J_DB")
-Neo4j_embd_index = os.getenv("NEO4J_EMBD_INDEX")
+client = openai.OpenAI(api_key=OPENAI_KEY)
 
 
 def get_embeddings(text, model='text-embedding-3-small'):
@@ -33,9 +26,9 @@ node.youtube_id AS youtube_id, round(score * 1000) / 1000 AS search_score LIMIT 
 
 def similarity_search(query, top_k=10):
     embeddings = get_embeddings(query)[0]
-    with GraphDatabase.driver(Neo4j_url, auth=Neo4j_auth, max_connection_pool_size=25) as driver:
-        result, _, _ = driver.execute_query(query_sim, vector_index_name=Neo4j_embd_index, top_k=top_k,
-                                            query_vector=embeddings, database_=Neo4j_database)
+    with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH, max_connection_pool_size=25) as driver:
+        result, _, _ = driver.execute_query(query_sim, vector_index_name=NEO4J_embd_index, top_k=top_k,
+                                            query_vector=embeddings, database_=NEO4J_DB)
     return result
 
 

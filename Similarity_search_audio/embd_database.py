@@ -3,19 +3,19 @@ import pandas as pd
 from neo4j import GraphDatabase
 import re
 
-from tqdm.auto import tqdm
-
 import openai
-from dotenv import load_dotenv, find_dotenv
-load_dotenv()
+from tqdm.auto import tqdm
+from mmtelegrambot.settings import OPENAI_KEY, NEO4J_URI, NEO4J_DB, NEO4J_AUTH
 
-# prod env if DEBUG
-if os.getenv("DEBUG", "True").lower() == 'false':
-    load_dotenv(find_dotenv(".env.prod"), override=True)
+# from dotenv import load_dotenv, find_dotenv
+# load_dotenv()
+#
+# # prod env if DEBUG
+# if os.getenv("DEBUG", "True").lower() == 'false':
+#     load_dotenv(find_dotenv(".env.prod"), override=True)
           
 
-Openai_key = os.getenv("OPENAI_KEY")
-Client = openai.OpenAI(api_key=Openai_key)
+Client = openai.OpenAI(api_key=OPENAI_KEY)
 
 def get_embeddings(text, model='text-embedding-3-small'):
     if isinstance(text, str):
@@ -24,55 +24,59 @@ def get_embeddings(text, model='text-embedding-3-small'):
     return [o.embedding for o in out.data]
 
 
-Neo4j_auth = tuple(os.getenv("NEO4J_AUTH").split(', '))
-Neo4j_url = os.getenv("NEO4J_URI")
-Neo4j_database = os.getenv("NEO4J_DB")
-Neo4j_embd_index = os.getenv("NEO4J_EMBD_INDEX")
-
 
 def parse_folder(folder_path):
     return [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith('csv')]
 
 
 def parse_link_date_from_csv(filename: str):
-    link = re.search(r"(\[[^\]]+\]).csv$", filename)
-    link = link.group(1)[1:-1] if link else ''
+    link = re.search(r"(\[[^\]]+\])\.", filename)
+    link = link.group(1)[1: -1] if link else ''
 
     date = re.search(r" #([^#]+)# ", filename)
     date = date.group(1) if date else ''
-    
     return link, date
 
 
-def insert_dataframe_to_db(dataframe: pd.DataFrame, filename: str):
+def insert_dataframe_to_db(dataframe: pd.DataFrame, filename: str, database_: str=None, driver: GraphDatabase=None):
     texts = dataframe.loc[:, 'text'].tolist()
 
     embeddings = get_embeddings(texts)
     youtube_link, upload_date = parse_link_date_from_csv(filename=filename)
+    upload_date_sorting = int(''.join(upload_date.split('-')[::-1]))
     name = os.path.splitext(filename)[0].split(' #')[0]
-    properties = {"name": name, "rav": None}
+    properties = {"name": name, "rav": None, "youtube_id": youtube_link,
+                  "upload_date": upload_date, "_date_sort": upload_date_sorting}
 
-    with GraphDatabase.driver(Neo4j_url, auth=Neo4j_auth, max_connection_pool_size=25) as driver:
+    database_ = NEO4J_DB if database_ is None else database_
+    driver_close = False
+    if driver is None:
+        driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH, max_connection_pool_size=5)
         driver.verify_connectivity()
-        lesson_node = driver.execute_query("CREATE (a:Lesson) SET a += $props RETURN a", props=properties, database_=Neo4j_database)
-        lesson_element_id = lesson_node[0][0]['a'].element_id
-        for idx in range(len(texts)):
-            if len(texts[idx].strip()) == 0:
-                continue
-            properties = {"lesson_name": name, 'part': idx + 1, "embeddings": embeddings[idx], "text": texts[idx], 
-                        'time_start': dataframe.loc[idx, 'start'], "time_end": dataframe.loc[idx, 'end'], "youtube_id": youtube_link,
-                        "upload_date": upload_date, "_date_sort": int(''.join(upload_date.split('-')[::-1]))}
-            
-            summary = driver.execute_query("""CREATE (txt:Part)
-                    SET txt += $props
-                        WITH txt
-                        MATCH (les)
-                        WHERE elementId(les) = $les_element_id
-                        WITH les, txt
-                        CREATE (les)-[:Text_part]->(txt)
-                        """, props=properties, les_element_id=lesson_element_id, 
-                                        database_=Neo4j_database)
-            
+        driver_close = True
+
+    lesson_node = driver.execute_query("CREATE (a:Lesson) SET a += $props RETURN a", props=properties,
+                                       database_=database_)
+    lesson_element_id = lesson_node[0][0]['a'].element_id
+    for idx in range(len(texts)):
+        if len(texts[idx].strip()) == 0:
+            continue
+        properties = {"lesson_name": name, 'part': idx + 1, "embeddings": embeddings[idx], "text": texts[idx],
+                      'time_start': dataframe.loc[idx, 'start'], "time_end": dataframe.loc[idx, 'end'], "youtube_id": youtube_link,
+                      "upload_date": upload_date, "_date_sort": upload_date_sorting}
+
+        summary = driver.execute_query("""CREATE (txt:Part)
+                SET txt += $props
+                    WITH txt
+                    MATCH (les)
+                    WHERE elementId(les) = $les_element_id
+                    WITH les, txt
+                    CREATE (les)-[:Text_part]->(txt)
+                    """, props=properties, les_element_id=lesson_element_id,
+                                       database_=database_)
+
+    if driver_close:
+        driver.close()
 
 
 def process_paths_to_database(paths):

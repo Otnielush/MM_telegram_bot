@@ -1,4 +1,6 @@
 import os
+from itertools import cycle
+
 from tqdm.auto import tqdm
 import yt_dlp
 
@@ -14,22 +16,26 @@ Ydl_opts = {
     }],
     "outtmpl": "%(title)s #%(upload_date>%d-%m-%Y)s# [%(id)s].%(ext)s",
     "quiet": True,
-    "no_warnings": True
+    "no_warnings": True,
 }
 
 
 
 
 def download_audio_youtube(links, output_folder, verbose=False):
+     if isinstance(links, str):
+          links = [links]
      links = [l.split('watch?v=')[-1] for l in links]  # leave only youtube video link
 
      os.chdir(os.path.abspath(output_folder))
 
      with yt_dlp.YoutubeDL(Ydl_opts) as ydl:
           errors = []
-          cycle = tqdm(links, position=0)
+          if verbose: cycle = tqdm(links, leave=False)
+          else: cycle = links
+
           for link in cycle:
-               cycle.set_description(link)
+               if verbose: cycle.set_description(link)
                path = Main_url + link
                try:
                     error_code = ydl.download(path)

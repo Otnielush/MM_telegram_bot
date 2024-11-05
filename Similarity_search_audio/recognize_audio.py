@@ -1,13 +1,9 @@
-
 import os
 import pandas as pd
 from tqdm.auto import tqdm
-from dotenv import load_dotenv
+from mmtelegrambot.settings import LEMONFOX_key_ASR
 
 import requests
-
-load_dotenv()
-api_key_ASR = os.getenv("lemonfox_API_KEY")
 
 
 def reorder_text(df, time_step=120):
@@ -31,18 +27,20 @@ def reorder_text(df, time_step=120):
 
 def recognize_audio_api(file_path) -> pd.DataFrame:
     url = "https://api.lemonfox.ai/v1/audio/transcriptions"
-    headers = {"Authorization": "Bearer " + api_key_ASR}
+    headers = {"Authorization": "Bearer " + LEMONFOX_key_ASR}
     data = {"response_format": "verbose_json"}
     
     audio_file = open(file_path, "rb")
     try:
         response = requests.post(url, headers=headers, files={'file': audio_file}, data=data).json()
+        assert 'segments' in response
     except:
         return pd.DataFrame()
     ds = pd.DataFrame()    
     ds['start'] = [r['start'] for r in response['segments']]
     ds['end'] = [r['end'] for r in response['segments']]
     ds['text'] = [r['text'] for r in response['segments']]
+    ds = ds[ds['text'].notna()]
     return ds
 
 
@@ -76,8 +74,7 @@ if __name__ == '__main__':
           ds = recognize_audio(path)
           if len(ds) == 0:
                continue
-          
-          ds = ds[ds['text'].notna()]
+
           ds = reorder_text(ds, time_step=args.interval)
 
           file_name = os.path.splitext(os.path.basename(path))[0] + ".csv"
