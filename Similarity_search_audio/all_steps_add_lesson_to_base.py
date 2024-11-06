@@ -7,10 +7,11 @@ from Similarity_search_audio.recognize_audio import recognize_audio_api, reorder
 from Similarity_search_audio.embd_database import insert_dataframe_to_db, parse_link_date_from_csv
 
 
-def is_youtube_link_in_base(yt_link: str) -> bool:
-    with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH, max_connection_pool_size=25) as driver:
+def is_youtube_link_in_base(yt_link: str, driver: GraphDatabase=None) -> bool:
+    if driver is None:
+        driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH, max_connection_pool_size=25)
         driver.verify_connectivity()
-        resp, _, _ = driver.execute_query("MATCH (l:Lesson {youtube_id: $link}) RETURN COUNT(l) > 0 AS exists",
+    resp, _, _ = driver.execute_query("MATCH (l:Lesson {youtube_id: $link}) RETURN COUNT(l) > 0 AS exists",
                                           link=yt_link, database_=NEO4J_DB)
     return bool(resp[0]['exists'])
 
@@ -63,10 +64,12 @@ def process_youtube_links_csv_to_database(path_csv, local=True, both_databases=F
     for link in prog:
         prog.set_description(f'added: {added}, current link: {link}')
         prog.refresh()
-        if is_youtube_link_in_base(link):
+        if is_youtube_link_in_base(link, driver=driver_dev):
             continue
 
-        download_audio_youtube(links=link, output_folder=tmp_folder)
+        errors = download_audio_youtube(links=link, output_folder=tmp_folder)
+        if len(errors) > 0:
+            continue
         filename = [f for f in os.listdir(tmp_folder) if f.endswith('m4a')][0]
         file_path = os.path.join(tmp_folder, filename)
         ds = recognize_audio(file_path=file_path)
@@ -100,7 +103,7 @@ if __name__ == '__main__':
         insert_audio_to_graph_base(r"C:\Users\Otniel\Downloads\tests\Bot made with ChatGPT ｜ Detailed Instructions #26-10-2024# [ICDJv6w9DtU].m4a",
                                    database_=NEO4J_DB, verbose=True)
 
-    if True:
+    if True: # fill database from csv links file
         process_youtube_links_csv_to_database(r"D:\Programming\My_reps\MM_telegram_bot\tmp_dev\lessons.csv",
                                               local=True, both_databases=True)
 

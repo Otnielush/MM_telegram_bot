@@ -17,7 +17,9 @@ def reorder_text(df, time_step=120):
         if end < cur_max_time:
             cur_text.append(text.strip())
         else:
-            new.append([cur_start_time, df.loc[i, 'start'], ' '.join(cur_text).replace('  ', ' ')])
+            text_chunk = ' '.join(cur_text).replace('  ', ' ').strip()
+            if len(text_chunk) > 4:
+                new.append([cur_start_time, df.loc[i, 'start'], ])
             cur_start_time = df.loc[i, 'start']
             cur_max_time += time_step
             cur_text = [text.strip()]

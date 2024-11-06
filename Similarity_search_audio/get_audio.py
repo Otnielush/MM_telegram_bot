@@ -1,5 +1,4 @@
 import os
-from itertools import cycle
 
 from tqdm.auto import tqdm
 import yt_dlp
