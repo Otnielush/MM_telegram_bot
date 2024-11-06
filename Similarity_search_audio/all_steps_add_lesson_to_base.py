@@ -36,7 +36,7 @@ def process_youtube_links_csv_to_database(path_csv, local=True, both_databases=F
     links = pd.read_csv(path_csv)['youtube_id'].tolist()
 
     from tqdm.auto import tqdm
-    prog = tqdm(links)
+    prog = tqdm(links[30:])
     added = 0
 
     from Similarity_search_audio.get_audio import download_audio_youtube
@@ -74,7 +74,6 @@ def process_youtube_links_csv_to_database(path_csv, local=True, both_databases=F
         file_path = os.path.join(tmp_folder, filename)
         ds = recognize_audio(file_path=file_path)
         ds = reorder_text(df=ds)
-
 
         insert_dataframe_to_db(dataframe=ds, filename=filename, database_=NEO4J_DB, driver=driver_dev)
         if both_databases:

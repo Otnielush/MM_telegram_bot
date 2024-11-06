@@ -1,11 +1,15 @@
 import torch
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline, logging
 import gc
 import pandas as pd
+import numpy as np
+
+logging.set_verbosity_error()  # only error
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 model_id = "openai/whisper-large-v3"
+
 
 
 Model = AutoModelForSpeechSeq2Seq.from_pretrained(model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True,
@@ -40,7 +44,8 @@ def recognize_audio_local(file_path: str) -> pd.DataFrame:
     ds['start'] = [r['timestamp'][0] for r in result['chunks']]
     ds['end'] = [r['timestamp'][1] for r in result['chunks']]
     ds['text'] = [r['text'] for r in result['chunks']]
-    ds = ds[ds['text'].notna()]
+    ds['text'] = ds['text'].apply(lambda x: x.strip() if len(x.strip()) > 1 else np.nan)  # mark empty segments
+    ds = ds[ds['text'].notna()].reset_index(drop=True)
     return ds
 
 
