@@ -13,7 +13,7 @@ class Command(BaseCommand):
         """
         Check for saved lessons without audio and download first of them
         """
-        lessons_without_audio = Lesson.objects.filter(is_published=False).filter(is_downloaded=False).filter(skip=False)
+        lessons_without_audio = Lesson.objects.filter(is_published=False, is_downloaded=False, skip=False)
 
         if len(lessons_without_audio) > 0:
             lesson = lessons_without_audio.last()
