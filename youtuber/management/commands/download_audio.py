@@ -5,7 +5,7 @@ import os
 from mmtelegrambot.settings import MEDIA_ROOT
 import yt_dlp
 import time
-from datetime import date
+from datetime import datetime
 
 class Command(BaseCommand):
     help = 'Download audio track from YouTube lesson'
@@ -44,7 +44,12 @@ class Command(BaseCommand):
                         # title = unicodedata.normalize('NFC', info_dict.get('title', ''))
                         title = info_dict.get('title', '')
                         duration = info_dict.get('duration', 0)
-                        upload_date = info_dict.get('upload_date', date.today()).strftime("%d-%m-%Y")
+                        upload_date_str = info_dict.get('upload_date', '')
+                        upload_date = (
+                            datetime.strptime(upload_date_str, "%Y%m%d").strftime("%d-%m-%Y") 
+                            if upload_date_str 
+                            else ""
+                        )
 
                         error_code = ydl.download(youtube_url)
 
