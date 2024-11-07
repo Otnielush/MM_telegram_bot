@@ -12,6 +12,7 @@ class Lesson(models.Model):
     is_downloaded = models.BooleanField(default=False, verbose_name="Audio downloaded")
     audio_file = models.FileField(upload_to="audio/", blank=True, null=True, verbose_name="Audio File")
     is_published = models.BooleanField(default=False, verbose_name="Sent to Telegram")
+    is_inserted_to_db = models.BooleanField(default=False, verbose_name="Inserted to Neo4j")
     time_added = models.DateTimeField(auto_now_add=True, verbose_name="Added to DB")
     skip = models.BooleanField(default=False, verbose_name="Can't download audio")
     error_count = models.IntegerField(default=0, verbose_name="Error count")
@@ -36,7 +37,7 @@ class Lesson(models.Model):
             if self.error_count == 3:
                 self.skip = True
 
-            if self.is_published is True:
+            if self.is_published and self.is_inserted_to_db:
                 self.audio_file = ''
 
         super(Lesson, self).save(*args, **kwargs)

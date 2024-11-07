@@ -21,13 +21,19 @@ def insert_audio_to_graph_base(file_path: str, database_: str=None, verbose=Fals
     yt_link, _ = parse_link_date_from_csv(filename=filename)
     if is_youtube_link_in_base(yt_link=yt_link):
         if verbose: print(f'Func: insert_audio_to_graph_base -> youtube lesson already in base, link: {yt_link}')
-        return
+        return True
 
     ds = recognize_audio_api(file_path=file_path)
     if len(ds) == 0:
         print(f'Error, file not recognized: {file_path}')
+        return False
     ds = reorder_text(ds)
-    insert_dataframe_to_db(dataframe=ds, filename=filename, database_=database_)
+    try:
+        insert_dataframe_to_db(dataframe=ds, filename=filename, database_=database_)
+        return True
+    except Exception as e:
+        print(e)
+        return False
 
 
 
