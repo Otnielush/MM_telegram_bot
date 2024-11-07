@@ -19,7 +19,7 @@ class LessonAdmin(admin.ModelAdmin):
     list_display_links = ('youtube_id',)
     list_filter = ('is_published', 'is_inserted_to_db')
     search_fields = ('title', 'youtube_id')
-    actions = ['reset_download_errors']
+    actions = ['reset_download_errors', 'mark_inserted_to_db']
 
     @admin.action(description="Reset download errors")
     def reset_download_errors(self, request, qs:QuerySet):
