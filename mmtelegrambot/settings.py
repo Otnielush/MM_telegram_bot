@@ -160,7 +160,7 @@ NEO4J_DB = os.getenv("NEO4J_DB")
 neo4j_cred = os.getenv("NEO4J_AUTH")
 NEO4J_embd_index = os.getenv("NEO4J_EMBD_INDEX")
 
-LEMONFOX_key_ASR = os.getenv("lemonfox_API_KEY")
+LEMONFOX_key_ASR = os.getenv("LEMONFOX_key_ASR")
 
 if neo4j_cred:
     NEO4J_AUTH = tuple(item.strip() for item in neo4j_cred.split(','))
