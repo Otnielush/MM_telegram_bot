@@ -11,7 +11,7 @@ class Command(BaseCommand):
 
         if len(lessons_to_insert) > 0:
             lesson = lessons_to_insert.last()
-            is_inserted = insert_audio_to_graph_base(lesson.audio_file.name)
+            is_inserted = insert_audio_to_graph_base(lesson.audio_file.path)
 
             if is_inserted:
                 lesson.is_inserted_to_db = True
