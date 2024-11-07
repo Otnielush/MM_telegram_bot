@@ -1,9 +1,8 @@
 from django.core.management.base import BaseCommand
 from neo4j import GraphDatabase
 import openai
-from mmtelegrambot.settings import OPENAI_KEY, NEO4J_URI, NEO4J_DB, NEO4J_AUTH
+from mmtelegrambot.settings import OPENAI_KEY, NEO4J_URI, NEO4J_DB, NEO4J_AUTH, NEO4J_embd_index
 
-VECTOR_INDEX_NAME = "lessons_text_embd"
 
 class Command(BaseCommand):
     help = 'Find answer in lessons base'
@@ -38,6 +37,6 @@ class Command(BaseCommand):
 
         embd = get_embedding(q)[0]
         result, _, _ = driver.execute_query(query_sim,
-                                            vector_index_name=VECTOR_INDEX_NAME, top_k=10, query_vector=embd,
+                                            vector_index_name=NEO4J_embd_index, top_k=10, query_vector=embd,
                                             database_=NEO4J_DB)
         print(result)
