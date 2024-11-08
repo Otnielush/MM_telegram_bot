@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from youtuber.models import Lesson
 import os
-# import unicodedata
+import unicodedata
 from mmtelegrambot.settings import MEDIA_ROOT
 import yt_dlp
 import time
@@ -41,8 +41,7 @@ class Command(BaseCommand):
                 try:
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                         info_dict = ydl.extract_info(youtube_url, download=False)
-                        # title = unicodedata.normalize('NFC', info_dict.get('title', ''))
-                        title = info_dict.get('title', '')
+                        title = unicodedata.normalize('NFC', info_dict.get('title', ''))
                         duration = info_dict.get('duration', 0)
                         upload_date_str = info_dict.get('upload_date', '')
                         upload_date = (
