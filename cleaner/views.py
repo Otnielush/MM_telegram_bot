@@ -10,7 +10,8 @@ from django.utils import timezone
 from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN, BOT_MENTION
 from .models import Message
 from youtuber.utils import escape_str, send_api_request
-from .utils import make_sim_search, make_result_message, save_result
+from .utils import make_result_message, save_result
+from Similarity_search_audio.search_scripts import similarity_search
 
 SHORT_TERM_LIMIT = 1       # maximum requests every 30 seconds
 SHORT_TERM_WINDOW = 30     # 30-second window
@@ -79,7 +80,7 @@ def handle_search_command(update):
     text = update['message'].get('text')
     question = text.strip()
     try:
-        result = make_sim_search(question)
+        result = similarity_search(question)
         save_result(message_id, user_id, chat_id, sent_at, question, result)
         message = make_result_message(result)
         send_api_request("sendMessage", {

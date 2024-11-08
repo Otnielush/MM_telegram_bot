@@ -12,13 +12,15 @@ class LessonAdmin(admin.ModelAdmin):
         'skip',
         'title',
         'duration',
+        'upload_date',
         'time_added',
-        'is_published'
+        'is_published',
+        'is_inserted_to_db'
     )
     list_display_links = ('youtube_id',)
-    list_filter = ('is_published',)
+    list_filter = ('is_published', 'is_inserted_to_db')
     search_fields = ('title', 'youtube_id')
-    actions = ['reset_download_errors']
+    actions = ['reset_download_errors', 'mark_inserted_to_db']
 
     @admin.action(description="Reset download errors")
     def reset_download_errors(self, request, qs:QuerySet):
@@ -26,6 +28,16 @@ class LessonAdmin(admin.ModelAdmin):
         for lesson in qs:
             lesson.error_count = 0
             lesson.skip = False
+            lesson.save()
+            count += 1
+
+        self.message_user(request, f'{count} lessons updated successfully')
+    
+    @admin.action(description="Mark as inserted to Neo4j")
+    def mark_inserted_to_db(self, request, qs:QuerySet):
+        count = 0
+        for lesson in qs:
+            lesson.is_inserted_to_db = True
             lesson.save()
             count += 1
 
