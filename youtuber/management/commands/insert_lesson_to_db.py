@@ -11,7 +11,12 @@ class Command(BaseCommand):
 
         if len(lessons_to_insert) > 0:
             lesson = lessons_to_insert.last()
-            is_inserted = insert_audio_to_graph_base(lesson.audio_file.path)
+            db_payload = {
+                'yt_link': lesson.youtube_id,
+                'upload_date': lesson.upload_date.strftime("%d-%m-%Y") if lesson.upload_date else '',
+                'name': lesson.title
+            }
+            is_inserted = insert_audio_to_graph_base(filepath=lesson.audio_file.path, db_payload=db_payload)
 
             if is_inserted:
                 lesson.is_inserted_to_db = True

@@ -38,13 +38,18 @@ def parse_link_date_from_csv(filename: str):
     return link, date
 
 
-def insert_dataframe_to_db(dataframe: pd.DataFrame, filename: str, database_: str=None, driver: GraphDatabase=None):
+def insert_dataframe_to_db(dataframe: pd.DataFrame, filename: str, database_: str=None, driver: GraphDatabase=None, db_payload: object=False):
     texts = dataframe.loc[:, 'text'].tolist()
 
     embeddings = get_embeddings(texts)
-    youtube_link, upload_date = parse_link_date_from_csv(filename=filename)
+    if db_payload:
+        name = db_payload['name']
+        youtube_link = db_payload['yt_link']
+        upload_date = db_payload['upload_date']
+    else:
+        name = os.path.splitext(filename)[0].split(' #')[0]
+        youtube_link, upload_date = parse_link_date_from_csv(filename=filename)
     upload_date_sorting = int(''.join(upload_date.split('-')[::-1]))
-    name = os.path.splitext(filename)[0].split(' #')[0]
     properties = {"name": name, "rav": None, "youtube_id": youtube_link,
                   "upload_date": upload_date, "_date_sort": upload_date_sorting}
 

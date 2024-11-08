@@ -31,7 +31,7 @@ class Command(BaseCommand):
 
             ydl_opts = {
                 'format': format_selector,
-                "outtmpl": os.path.join(MEDIA_ROOT, 'audio', "%(title)s #%(upload_date>%d-%m-%Y)s# [%(id)s].%(ext)s"),
+                'outtmpl': os.path.join(MEDIA_ROOT, 'audio', '%(id)s.%(ext)s'),
                 "quiet": True,
                 "no_warnings": True
             }
@@ -46,9 +46,9 @@ class Command(BaseCommand):
                         duration = info_dict.get('duration', 0)
                         upload_date_str = info_dict.get('upload_date', '')
                         upload_date = (
-                            datetime.strptime(upload_date_str, "%Y%m%d").strftime("%d-%m-%Y") 
+                            datetime.strptime(upload_date_str, "%Y%m%d")
                             if upload_date_str 
-                            else ""
+                            else None
                         )
 
                         error_code = ydl.download(youtube_url)
@@ -56,7 +56,8 @@ class Command(BaseCommand):
                         # Saving results to DB
                         lesson.title = title
                         lesson.duration = duration
-                        lesson.audio_file = f"audio/{title} #{upload_date}# [{youtube_id}].m4a"
+                        lesson.upload_date = upload_date
+                        lesson.audio_file = f"audio/{youtube_id}.m4a"
                         lesson.is_downloaded = True
                         lesson.save()
 

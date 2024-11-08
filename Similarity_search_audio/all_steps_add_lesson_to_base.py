@@ -16,9 +16,12 @@ def is_youtube_link_in_base(yt_link: str, driver: GraphDatabase=None) -> bool:
     return bool(resp[0]['exists'])
 
 
-def insert_audio_to_graph_base(file_path: str, database_: str=None, verbose=False):
+def insert_audio_to_graph_base(file_path: str, database_: str=None, verbose=False, db_payload: object=False):
     filename = os.path.basename(file_path)
-    yt_link, _ = parse_link_date_from_csv(filename=filename)
+    if db_payload:
+        yt_link = db_payload['yt_link']
+    else:
+        yt_link, _ = parse_link_date_from_csv(filename=filename)
     if is_youtube_link_in_base(yt_link=yt_link):
         if verbose: print(f'Func: insert_audio_to_graph_base -> youtube lesson already in base, link: {yt_link}')
         return True
@@ -29,7 +32,7 @@ def insert_audio_to_graph_base(file_path: str, database_: str=None, verbose=Fals
         return False
     ds = reorder_text(ds)
     try:
-        insert_dataframe_to_db(dataframe=ds, filename=filename, database_=database_)
+        insert_dataframe_to_db(dataframe=ds, filename=filename, database_=database_, db_payload=db_payload)
         return True
     except Exception as e:
         print(e)
