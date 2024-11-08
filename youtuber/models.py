@@ -9,6 +9,7 @@ class Lesson(models.Model):
     youtube_id = models.CharField(max_length=15, unique=True, verbose_name="YouTube ID")
     title = models.CharField(max_length=255, blank=True, null=True, verbose_name="Title")
     duration = models.IntegerField(blank=True, null=True, verbose_name="Duration")
+    upload_date = models.DateField(blank=True, null=True, verbose_name="Upload date")
     is_downloaded = models.BooleanField(default=False, verbose_name="Audio downloaded")
     audio_file = models.FileField(upload_to="audio/", blank=True, null=True, verbose_name="Audio File")
     is_published = models.BooleanField(default=False, verbose_name="Sent to Telegram")

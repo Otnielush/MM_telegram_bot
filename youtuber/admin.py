@@ -12,6 +12,7 @@ class LessonAdmin(admin.ModelAdmin):
         'skip',
         'title',
         'duration',
+        'upload_date',
         'time_added',
         'is_published',
         'is_inserted_to_db'
