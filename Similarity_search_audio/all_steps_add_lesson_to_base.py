@@ -81,7 +81,6 @@ def process_youtube_links_csv_to_database(path_csv, local=True, both_databases=F
         ds = recognize_audio(file_path=file_path)
         ds = reorder_text(df=ds)
 
-
         insert_dataframe_to_db(dataframe=ds, filename=filename, database_=NEO4J_DB, driver=driver_dev)
         if both_databases:
             insert_dataframe_to_db(dataframe=ds, filename=filename, database_=NEO4J_DB_, driver=driver_prod)

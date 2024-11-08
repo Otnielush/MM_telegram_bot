@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 from tqdm.auto import tqdm
 from mmtelegrambot.settings import LEMONFOX_key_ASR
 
@@ -14,6 +15,8 @@ def reorder_text(df, time_step=120):
     for i in range(len(df)):
         end = df.loc[i, 'end']
         text = df.loc[i, 'text']
+        if text is None:
+            continue
         if end < cur_max_time:
             cur_text.append(text.strip())
         else:
@@ -24,7 +27,9 @@ def reorder_text(df, time_step=120):
             cur_max_time += time_step
             cur_text = [text.strip()]
     new.append([cur_start_time, end, ' '.join(cur_text).replace('  ', ' ')])
-    return pd.DataFrame(new, columns=['start', 'end', 'text'])
+    ds = pd.DataFrame(new, columns=['start', 'end', 'text'])
+    ds = ds[ds['text'].notna()].reset_index(drop=True)
+    return ds
 
 
 def recognize_audio_api(file_path) -> pd.DataFrame:
@@ -42,7 +47,8 @@ def recognize_audio_api(file_path) -> pd.DataFrame:
     ds['start'] = [r['start'] for r in response['segments']]
     ds['end'] = [r['end'] for r in response['segments']]
     ds['text'] = [r['text'] for r in response['segments']]
-    ds = ds[ds['text'].notna()]
+    ds['text'] = ds['text'].apply(lambda x: x.strip() if len(x.strip()) > 1 else np.nan)  # mark empty segments
+    ds = ds[ds['text'].notna()].reset_index(drop=True)
     return ds
 
 
