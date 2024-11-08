@@ -1,10 +1,14 @@
+import csv
 from django.contrib import admin
 from django.db.models import QuerySet
+from django.urls import path
+from django.http import HttpResponse
 
 from .models import Lesson
 
 
 class LessonAdmin(admin.ModelAdmin):
+    change_list_template = 'admin/changelist_with_export_btn.html'
     list_display = (
         'youtube_id',
         'is_downloaded',
@@ -42,6 +46,41 @@ class LessonAdmin(admin.ModelAdmin):
             count += 1
 
         self.message_user(request, f'{count} lessons updated successfully')
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('export-csv/', self.admin_site.admin_view(self.export_csv))
+        ]
+        return my_urls + urls
+
+    def export_csv(self, request):
+        qs = Lesson.objects.all()
+
+        response = HttpResponse(content_type="text/csv")
+        response['Content-Disposition'] = 'attachment; filename="lessons.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow([
+            'youtube_id', 
+            'title', 
+            'duration', 
+            'upload_date', 
+            'sent_to_telegram', 
+            'inserted_to_neo4j'
+        ])
+
+        for obj in qs:
+            writer.writerow([
+                obj.youtube_id, 
+                obj.title, 
+                obj.duration, 
+                obj.upload_date, 
+                obj.is_published, 
+                obj.is_inserted_to_db
+            ]) 
+
+        return response
 
 
 
