@@ -7,7 +7,7 @@ class Command(BaseCommand):
     help = 'Insert audio lesson to graph base'
 
     def handle(self, *args, **options):
-        lessons_to_insert = Lesson.objects.filter(is_downloaded=True, is_published=True, is_inserted_to_db=False)
+        lessons_to_insert = Lesson.objects.filter(is_downloaded=True, is_inserted_to_db=False)
 
         if len(lessons_to_insert) > 0:
             lesson = lessons_to_insert.last()
