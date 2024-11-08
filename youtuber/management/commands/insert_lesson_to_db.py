@@ -16,7 +16,7 @@ class Command(BaseCommand):
                 'upload_date': lesson.upload_date.strftime("%d-%m-%Y") if lesson.upload_date else '',
                 'name': lesson.title
             }
-            is_inserted = insert_audio_to_graph_base(filepath=lesson.audio_file.path, db_payload=db_payload)
+            is_inserted = insert_audio_to_graph_base(file_path=lesson.audio_file.path, db_payload=db_payload)
 
             if is_inserted:
                 lesson.is_inserted_to_db = True
