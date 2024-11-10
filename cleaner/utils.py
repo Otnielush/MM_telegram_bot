@@ -11,7 +11,6 @@ def save_result(message_id, user_id, chat_id, sent_at, text, result):
             results.append({
                 "name": item["lesson_name"],
                 "yt_id": item["youtube_id"],
-                "part": item["part"],
                 "score": item["search_score"]
             })
         try:
