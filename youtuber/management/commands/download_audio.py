@@ -23,11 +23,20 @@ class Command(BaseCommand):
 
             def format_selector(ctx):
                 formats = ctx.get('formats')[::-1]
+                # Filter only m4a formats
+                m4a_formats = [f for f in formats if f.get('ext') == 'm4a']
 
-                for f in formats:
-                    if f.get('ext') == 'm4a' and f.get('filesize_approx') and f['filesize_approx'] <= 50 * 1024 * 1024:
-                        return [f]
-                return None
+                if not m4a_formats:
+                    return None
+
+                # Sort by quality metrics (preferring higher values)
+                best_format = max(m4a_formats, key=lambda x: (
+                    x.get('abr', 0),  # average bitrate
+                    x.get('asr', 0),  # audio sampling rate
+                    x.get('filesize', 0)  # file size as a last resort
+                ))
+
+                return [best_format]
 
             ydl_opts = {
                 'format': format_selector,
@@ -52,11 +61,76 @@ class Command(BaseCommand):
 
                         error_code = ydl.download(youtube_url)
 
+                        audio_file = f"audio/{youtube_id}.m4a"
+                        audio_file_path = os.path.join(MEDIA_ROOT, audio_file)
+
+                        # Check file size and compress if needed
+                        file_size = os.path.getsize(audio_file_path)
+                        max_size = 50 * 1024 * 1024  # 50MB
+
+                        if file_size > max_size:
+                            compressed_path = os.path.join(MEDIA_ROOT, 'audio', f'{youtube_id}_compressed.m4a')
+
+                            # Start with a moderate bitrate
+                            target_bitrate = "128k"
+
+                            while True:
+                                # Use ffmpeg to compress the file
+                                import subprocess
+                                # First, analyze the audio to get volume statistics
+                                analyze_cmd = [
+                                    'ffmpeg', '-i', audio_file_path,
+                                    '-af', 'volumedetect',
+                                    '-f', 'null', '-'
+                                ]
+                                result = subprocess.run(analyze_cmd, capture_output=True, text=True)
+
+                                # Extract mean volume from the analysis
+                                mean_volume = None
+                                for line in result.stderr.split('\n'):
+                                    if 'mean_volume:' in line:
+                                        mean_volume = float(line.split(':')[1].strip().replace(' dB', ''))
+                                        break
+
+                                # Calculate volume adjustment (target: -14 dB, which is a good standard)
+                                volume_adjust = '-14' if mean_volume is None else f"{-14 - mean_volume:.1f}"
+
+                                # Compress with volume normalization
+                                cmd = [
+                                    'ffmpeg', '-y',  # -y to overwrite output file
+                                    '-i', audio_file_path,
+                                    '-af', f'volume={volume_adjust}dB',  # Apply volume adjustment
+                                    '-c:a', 'aac',
+                                    '-b:a', target_bitrate,
+                                    compressed_path
+                                ]
+
+                                try:
+                                    subprocess.run(cmd, check=True, capture_output=True)
+                                except subprocess.CalledProcessError as e:
+                                    print(f"FFmpeg error: {e.stderr.decode()}")
+                                    raise
+
+                                new_size = os.path.getsize(compressed_path)
+
+                                if new_size <= max_size:
+                                    # Replace original file with compressed version
+                                    os.replace(compressed_path, audio_file_path)
+                                    break
+                                elif new_size > max_size:
+                                    # If still too large, reduce bitrate and try again
+                                    current_bitrate = int(target_bitrate.replace('k', ''))
+                                    target_bitrate = f"{max(64, current_bitrate - 32)}k"
+                                    # If we've reached minimum acceptable bitrate, use the last version
+                                    if current_bitrate <= 64:
+                                        os.replace(compressed_path, audio_file_path)
+                                        break
+
                         # Saving results to DB
                         lesson.title = title
                         lesson.duration = duration
                         lesson.upload_date = upload_date
-                        lesson.audio_file = f"audio/{youtube_id}.m4a"
+                        lesson.audio_file = audio_file
                         lesson.is_downloaded = True
                         lesson.save()
 
