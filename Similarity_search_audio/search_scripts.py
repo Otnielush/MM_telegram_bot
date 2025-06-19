@@ -2,7 +2,6 @@ from neo4j import GraphDatabase
 from neo4j_graphrag.embeddings.openai import OpenAIEmbeddings
 from neo4j_graphrag.retrievers import HybridRetriever
 
-from dataclasses import dataclass
 import json
 
 from mmtelegrambot.settings import OPENAI_KEY, NEO4J_URI, NEO4J_DB, NEO4J_AUTH, NEO4J_embd_index, NEO4J_fulltext_index
@@ -21,28 +20,19 @@ retriever = HybridRetriever(
 )
 
 
-@dataclass
-class Result:
-    lesson_name: str
-    start: float
-    end: float
-    upload_date: str
-    youtube_id: str
-    search_score: float
-
 
 def similarity_search(query, top_k=10):
-    retriever_result = retriever.search(query_text=query, top_k=top_k)
+    retriever_result = retriever.search(query_text=query, top_k=30)
     result = []
-    for r in retriever_result.items:
+    for r in retriever_result.items[:top_k]:
         try:
             data = json.loads(r.content.replace("'", '"'))
         except Exception as e:
-            print('similarity_search error:', e)
+            print('similarity_search json parse error:', e)
             continue
-        result.append(Result(lesson_name=data['lesson_name'], start=data['time_start'], end=data['time_end'],
-                             upload_date=data['upload_date'], youtube_id=data['youtube_id'],
-                             search_score=round(r.metadata['score'], 3)))
+        result.append({"name": data['lesson_name'], "start":data['time_start'], "end":data['time_end'],
+                             "upload_date":data['upload_date'], "yt_id":data['youtube_id'],
+                             "score":round(r.metadata['score'], 3)})
 
     return result
 

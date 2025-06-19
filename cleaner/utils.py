@@ -4,15 +4,8 @@ from cleaner.models import Question
 VECTOR_INDEX_NAME = "lessons_text_embd"
 
 
-def save_result(message_id, user_id, chat_id, sent_at, text, result):
-    if len(result):
-        results = []
-        for item in result:
-            results.append({
-                "name": item["lesson_name"],
-                "yt_id": item["youtube_id"],
-                "score": item["search_score"]
-            })
+def save_result(message_id, user_id, chat_id, sent_at, text, results):
+    if len(results):
         try:
             Question.objects.create(
                 message_id = message_id,
