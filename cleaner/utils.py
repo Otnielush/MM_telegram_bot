@@ -25,8 +25,8 @@ def make_result_message(result):
     if len(result):
         item_strings = []
         for item in result:
-            title = item["lesson_name"]
-            youtube_id = item["youtube_id"]
+            title = item["name"]
+            youtube_id = item["yt_id"]
             start_time = round(item["start"])
             end_time = round(item["end"]) if item["end"] > 0 else None
             upload_date = item["upload_date"]
