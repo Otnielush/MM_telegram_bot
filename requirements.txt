@@ -54,5 +54,5 @@ tzdata==2023.3
 urllib3==2.0.4
 websockets==13.1
 Werkzeug==2.3.7
-yt-dlp==2025.8.11
+yt-dlp==2025.9.26
 zipp==3.16.2
