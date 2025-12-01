@@ -12,9 +12,12 @@ class SpamDetector:
         Args:
             threshold: Cosine similarity threshold above which messages are considered similar
         """
+        russian_stop_words = ['и', 'в', 'во', 'не', 'что', 'он', 'на', 'я', 'с', 'со', 'как', 'а', 'то', 'все', 'она',
+                              'так', 'его', 'но', 'да', 'ты', 'к', 'у', 'же', 'вы', 'за', 'бы', 'по', 'только', 'ее',
+                              'мне', 'было', 'вот', 'от', 'меня', 'еще', 'нет', 'о', 'из', 'ему']
         self.vectorizer = TfidfVectorizer(
             lowercase=True,
-            stop_words='english',
+            stop_words=russian_stop_words,
             min_df=1,  # Include terms that appear in at least 1 document
             max_df=0.9  # Exclude terms that appear in more than 90% of documents
         )
