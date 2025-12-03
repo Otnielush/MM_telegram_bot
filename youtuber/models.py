@@ -20,7 +20,9 @@ class Lesson(models.Model):
 
     @cached_property
     def audio_file_path(self):
-        return self.audio_file.path
+        if self.audio_file:
+            return self.audio_file.path
+        return None
 
     def __str__(self):
         if self.title is not None:
@@ -64,5 +66,5 @@ def delete_old_file(sender, instance, **kwargs):
 
 @receiver(post_delete, sender=Lesson)
 def delete_file_from_disk(sender, instance, **kwargs):
-    if instance.audio_file_path:
+    if instance.audio_file and instance.audio_file_path:
         default_storage.delete(instance.audio_file_path)

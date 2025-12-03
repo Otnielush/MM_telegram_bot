@@ -2,7 +2,7 @@ import csv
 from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import path
-from django.db.models import JSONField
+from django.db.models import JSONField, QuerySet
 from django_json_widget.widgets import JSONEditorWidget
 from .models import Message, Question
 
@@ -12,13 +12,38 @@ class MessageAdmin(admin.ModelAdmin):
         'message_id',
         'text',
         'time_sent',
+        'is_spam',
+        'prob_spam',
+        'prob_ham',
         'is_deleted',
         'error_count',
         'skip',
     )
     list_display_links = ('message_id',)
-    list_filter = ('is_deleted',)
+    list_filter = ('is_spam',)
     search_fields = ('text', 'user_id', 'message_id')
+    actions = ['mark_as_spam', 'mark_as_ham']
+
+    @admin.action(description="Mark as spam")
+    def mark_as_spam(self, request, qs: QuerySet):
+        count = 0
+        for message in qs:
+            message.is_spam = True
+            message.save()
+            count += 1
+
+        self.message_user(request, f'{count} messages updated successfully')
+
+    @admin.action(description="Mark as ham")
+    def mark_as_ham(self, request, qs: QuerySet):
+        count = 0
+        for message in qs:
+            message.is_spam = False
+            message.save()
+            count += 1
+
+        self.message_user(request, f'{count} messages updated successfully')
+
 
 class QuestionAdmin(admin.ModelAdmin):
     change_list_template = 'admin/changelist_with_export_btn.html'

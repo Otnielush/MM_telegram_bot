@@ -66,6 +66,9 @@ coverage.xml
 *.mo
 *.pot
 
+# Models
+*.pkl
+
 # Django stuff:
 *.log
 local_settings.py

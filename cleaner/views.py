@@ -12,6 +12,7 @@ from .models import Message
 from youtuber.utils import escape_str, send_api_request
 from .utils import make_result_message, save_result
 from Similarity_search_audio.search_scripts import similarity_search
+from cleaner.spam_detector import spam_detector
 
 SHORT_TERM_LIMIT = 1       # maximum requests every 30 seconds
 SHORT_TERM_WINDOW = 30     # 30-second window
@@ -207,11 +208,16 @@ def telegram_bot(request):
                         text = update['message'].get('text')
                         time_sent = get_date_time_sent(update)
 
+                        res = spam_detector.predict(text)
+
                         message = Message(
                             message_id=message_id,
                             user_id=user_id,
                             time_sent=time_sent,
-                            text=text
+                            text=text,
+                            is_spam=res["is_spam"],
+                            prob_spam=res["prob_spam"],
+                            prob_ham=res["prob_ham"]
                         )
 
                         try:
