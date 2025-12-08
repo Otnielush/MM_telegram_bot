@@ -42,7 +42,13 @@ class Command(BaseCommand):
                 'format': format_selector,
                 'outtmpl': os.path.join(MEDIA_ROOT, 'audio', '%(id)s.%(ext)s'),
                 "quiet": True,
-                "no_warnings": True
+                "no_warnings": True,
+
+                "writesubtitles": True,
+                "writeautomaticsub": True,
+                "subtitleslangs": ["ru"],
+                "subtitlesformat": "vtt",
+                "subtitlesouttmpl": os.path.join(MEDIA_ROOT, 'audio', '%(id)s.%(ext)s'),
             }
 
             retry_count = 3
@@ -63,6 +69,8 @@ class Command(BaseCommand):
 
                         audio_file = f"audio/{youtube_id}.m4a"
                         audio_file_path = os.path.join(MEDIA_ROOT, audio_file)
+
+                        subtitles_file = f"audio/{youtube_id}.ru.vtt"
 
                         # Check file size and compress if needed
                         file_size = os.path.getsize(audio_file_path)
@@ -131,6 +139,7 @@ class Command(BaseCommand):
                         lesson.duration = duration
                         lesson.upload_date = upload_date
                         lesson.audio_file = audio_file
+                        lesson.subtitles_file = subtitles_file
                         lesson.is_downloaded = True
                         lesson.save()
 

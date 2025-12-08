@@ -12,6 +12,8 @@ class Lesson(models.Model):
     upload_date = models.DateField(blank=True, null=True, verbose_name="Upload date")
     is_downloaded = models.BooleanField(default=False, verbose_name="Audio downloaded")
     audio_file = models.FileField(upload_to="audio/", blank=True, null=True, verbose_name="Audio File")
+    subtitles_file = models.FileField(upload_to="audio/", blank=True, null=True, verbose_name="Subtitles File")
+    summary = models.TextField(blank=True, null=True, verbose_name="Summary")
     is_published = models.BooleanField(default=False, verbose_name="Sent to Telegram")
     is_inserted_to_db = models.BooleanField(default=False, verbose_name="Inserted to Neo4j")
     time_added = models.DateTimeField(auto_now_add=True, verbose_name="Added to DB")
@@ -23,6 +25,11 @@ class Lesson(models.Model):
         if self.audio_file:
             return self.audio_file.path
         return None
+
+    @cached_property
+    def subtitles_file_path(self):
+        if self.subtitles_file:
+            return self.subtitles_file.path
 
     def __str__(self):
         if self.title is not None:
@@ -40,8 +47,9 @@ class Lesson(models.Model):
             if self.error_count == 3:
                 self.skip = True
 
-            if self.is_published and self.is_inserted_to_db:
+            if self.is_published:
                 self.audio_file = ''
+                self.subtitles_file = ''
 
         super(Lesson, self).save(*args, **kwargs)
 
@@ -52,15 +60,22 @@ def delete_old_file(sender, instance, **kwargs):
         return False
 
     try:
-        old_file = sender.objects.get(pk=instance.pk).audio_file
+        old_instance = sender.objects.get(pk=instance.pk)
+        old_audio = old_instance.audio_file
+        old_subtitles = old_instance.subtitles_file
     except sender.DoesNotExist:
         return False
 
-    new_file = instance.audio_file
+    new_audio = instance.audio_file
+    new_subtitles = instance.subtitles_file
 
-    if not old_file == new_file:
-        if old_file:
-            default_storage.delete(old_file.path)
+    if not old_audio == new_audio:
+        if old_audio:
+            default_storage.delete(old_audio.path)
+
+    if not old_subtitles == new_subtitles:
+        if old_subtitles:
+            default_storage.delete(old_subtitles.path)
     return True
 
 
@@ -68,3 +83,6 @@ def delete_old_file(sender, instance, **kwargs):
 def delete_file_from_disk(sender, instance, **kwargs):
     if instance.audio_file and instance.audio_file_path:
         default_storage.delete(instance.audio_file_path)
+
+    if instance.subtitles_file and instance.subtitles_file_path:
+        default_storage.delete(instance.subtitles_file_path)
