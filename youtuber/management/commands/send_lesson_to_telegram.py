@@ -44,11 +44,12 @@ class Command(BaseCommand):
         """
         Send message to Telegram
         """
-        unpublished_lessons = Lesson.objects.filter(is_published=False).filter(is_downloaded=True)
+        unpublished_lessons = Lesson.objects.filter(is_published=False, is_downloaded=True, summary__isnull=False)
 
         if len(unpublished_lessons) > 0:
             lesson = unpublished_lessons.last()
             title = lesson.title
+            summary = lesson.summary
             performer = "Махон Меир"
             video_message_response = {}
             audio_message_response = {}
@@ -74,7 +75,23 @@ class Command(BaseCommand):
                         disable_notification=True
                     )
 
-                    if audio_message_response.message_id:
+                    audio_message_id = audio_message_response.message_id
+                    if audio_message_id:
+                        if summary is not 'skipped':
+                            try:
+                                # Temporary make sending summary optional
+                                send_api_request("sendMessage", {
+                                    'chat_id': settings.MM_CHAT_ID,
+                                    'text': "<blockquote expandable>" + summary + "</blockquote>",
+                                    'parse_mode': 'HTML',
+                                    'disable_notification': True,
+                                    'disable_web_page_preview': True,
+                                    'reply_parameters': {'message_id': audio_message_id}
+                                })
+                            except Exception as e:
+                                print(e)
+                                print(f'Error while sending summary for lesson {lesson.youtube_id}')
+
                         lesson.is_published = True
                         lesson.save()
 

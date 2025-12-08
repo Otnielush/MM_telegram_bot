@@ -13,6 +13,7 @@ class Lesson(models.Model):
     is_downloaded = models.BooleanField(default=False, verbose_name="Audio downloaded")
     audio_file = models.FileField(upload_to="audio/", blank=True, null=True, verbose_name="Audio File")
     subtitles_file = models.FileField(upload_to="audio/", blank=True, null=True, verbose_name="Subtitles File")
+    summary = models.TextField(blank=True, null=True, verbose_name="Summary")
     is_published = models.BooleanField(default=False, verbose_name="Sent to Telegram")
     is_inserted_to_db = models.BooleanField(default=False, verbose_name="Inserted to Neo4j")
     time_added = models.DateTimeField(auto_now_add=True, verbose_name="Added to DB")
