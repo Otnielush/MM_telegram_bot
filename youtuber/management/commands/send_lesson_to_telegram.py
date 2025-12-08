@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 from youtuber.models import Lesson
 from calendarer.models import Date
 from datetime import date
@@ -44,7 +45,10 @@ class Command(BaseCommand):
         """
         Send message to Telegram
         """
-        unpublished_lessons = Lesson.objects.filter(is_published=False, is_downloaded=True, summary__isnull=False)
+        unpublished_lessons = Lesson.objects.filter(
+            is_published=False,
+            is_downloaded=True
+        ).filter(~Q(summary__isnull=True) & ~Q(summary=''))
 
         if len(unpublished_lessons) > 0:
             lesson = unpublished_lessons.last()
