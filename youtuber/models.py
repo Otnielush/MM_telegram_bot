@@ -40,7 +40,7 @@ class Lesson(models.Model):
             if self.error_count == 3:
                 self.skip = True
 
-            if self.is_published and self.is_inserted_to_db:
+            if self.is_published:
                 self.audio_file = ''
 
         super(Lesson, self).save(*args, **kwargs)
