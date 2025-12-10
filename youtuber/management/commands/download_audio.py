@@ -71,6 +71,7 @@ class Command(BaseCommand):
                         audio_file_path = os.path.join(MEDIA_ROOT, audio_file)
 
                         subtitles_file = f"audio/{youtube_id}.ru.vtt"
+                        subtitles_file_path = os.path.join(MEDIA_ROOT, subtitles_file)
 
                         # Check file size and compress if needed
                         file_size = os.path.getsize(audio_file_path)
@@ -139,7 +140,7 @@ class Command(BaseCommand):
                         lesson.duration = duration
                         lesson.upload_date = upload_date
                         lesson.audio_file = audio_file
-                        lesson.subtitles_file = subtitles_file
+                        lesson.subtitles_file = subtitles_file if os.path.exists(subtitles_file_path) else None
                         lesson.is_downloaded = True
                         lesson.save()
 
