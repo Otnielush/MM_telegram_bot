@@ -47,7 +47,7 @@ class Lesson(models.Model):
             if self.error_count == 3:
                 self.skip = True
 
-            if self.is_published:
+            if self.is_published and self.is_inserted_to_db:
                 self.audio_file = ''
                 self.subtitles_file = ''
 
