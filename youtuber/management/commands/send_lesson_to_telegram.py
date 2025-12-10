@@ -79,9 +79,8 @@ class Command(BaseCommand):
                         disable_notification=True
                     )
 
-                    audio_message_id = audio_message_response.message_id
-                    if audio_message_id:
-                        if summary is not 'skipped':
+                    if audio_message_response.message_id:
+                        if summary != 'skipped':
                             try:
                                 # Temporary make sending summary optional
                                 send_api_request("sendMessage", {
@@ -89,8 +88,7 @@ class Command(BaseCommand):
                                     'text': "<blockquote expandable>" + summary + "</blockquote>",
                                     'parse_mode': 'HTML',
                                     'disable_notification': True,
-                                    'disable_web_page_preview': True,
-                                    'reply_parameters': {'message_id': audio_message_id}
+                                    'disable_web_page_preview': True
                                 })
                             except Exception as e:
                                 print(e)
