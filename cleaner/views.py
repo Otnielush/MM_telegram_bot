@@ -13,6 +13,9 @@ from youtuber.utils import escape_str, send_api_request
 from .utils import make_result_message, save_result
 from Similarity_search_audio.search_scripts import similarity_search
 from cleaner.spam_detector import spam_detector
+import logging
+
+logger = logging.getLogger(__name__)
 
 SHORT_TERM_LIMIT = 1       # maximum requests every 30 seconds
 SHORT_TERM_WINDOW = 30     # 30-second window
@@ -209,21 +212,43 @@ def telegram_bot(request):
                         time_sent = get_date_time_sent(update)
 
                         res = spam_detector.predict(text)
+                        try:
+                            prob_spam = float(res.get("prob_spam", 0))
+                        except (TypeError, ValueError):
+                            prob_spam = 0
+                        is_spam = prob_spam > 0.7
+                        is_deleted = False
+                        if is_spam:
+                            try:
+                                send_api_request('deleteMessage', {
+                                    'chat_id': chat_id,
+                                    'message_id': message_id
+                                })
+                                is_deleted = True
+                                logger.info('Spam message %s was deleted', message_id)
+                            except Exception as e:
+                                logger.error('Error deleting spam message %s: %s', message_id, e)
 
                         message = Message(
                             message_id=message_id,
                             user_id=user_id,
                             time_sent=time_sent,
                             text=text,
-                            is_spam=res["is_spam"],
+                            is_spam=is_spam,
                             prob_spam=res["prob_spam"],
-                            prob_ham=res["prob_ham"]
+                            prob_ham=res["prob_ham"],
+                            skip=is_deleted
                         )
 
                         try:
                             message.save()
 
-                            if '/start' in text or BOT_MENTION in text:
+                            is_start_command = (
+                                    text.startswith('/start') or
+                                    BOT_MENTION in text
+                            )
+
+                            if not is_spam and is_start_command:
                                 handle_start_command(chat_id, is_group=True)
                             
                             return HttpResponse('ok')
