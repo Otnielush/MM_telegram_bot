@@ -7,12 +7,13 @@ from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime
 from django.utils import timezone
-from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN, BOT_MENTION
+from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN, BOT_MENTION, OLLAMA_API_KEY
 from .models import Message
 from youtuber.utils import escape_str, send_api_request
 from .utils import make_result_message, save_result
 from Similarity_search_audio.search_scripts import similarity_search
 from cleaner.spam_detector import spam_detector
+from ollama import Client
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,21 @@ SHORT_TERM_WINDOW = 30     # 30-second window
 
 DAILY_LIMIT = 20           # maximum requests per day
 DAILY_WINDOW = 86400       # 24-hour window (in seconds)
+
+ollama_client = Client(
+    host="https://ollama.com",
+    headers={'Authorization': 'Bearer ' + OLLAMA_API_KEY}
+)
+
+prompt = """
+        Ты даешь ответы на вопросы пользователя, используя текст, который я тебе дал.
+        Не придумывай сам ответ, используй только текст, который я тебе дал.
+        Выбирай из текста только нужную информацию для ответа.
+        Если в тексте нет ответа, используй фразу: "В моей базе текстов по урокам не нашлась информация о ..."
+
+        ## Текст:
+        {{document}}
+        """
 
 def is_rate_limited(user_id):
     """
@@ -60,6 +76,29 @@ def get_date_time_sent(update):
 
     return time_sent
 
+def get_answer(question):
+    similar_texts = similarity_search(question, 3)
+    doc = " ".join(similar_texts)
+
+    messages = [
+        {
+            'role': 'system',
+            'content': prompt.replace("{{document}}", doc),
+        },
+        {
+            'role': 'user',
+            'content': question,
+        },
+    ]
+
+    try:
+        response = ollama_client.chat('gpt-oss:20b', messages=messages, stream=False)
+        answer = response['message']['content']
+        return answer
+    except Exception as e:
+        logger.error('Error getting Ollama response for question "%s": %s', question, e)
+        return None
+
 def handle_search_command(update):
     user_id = update['message']['from']['id']
     chat_id = update['message']['chat']['id']
@@ -84,14 +123,15 @@ def handle_search_command(update):
     text = update['message'].get('text')
     question = text.strip()
     try:
-        result = similarity_search(question)
-        save_result(message_id, user_id, chat_id, sent_at, question, result)
-        # TODO: update make_result_message
-        message = make_result_message(result)
+        answer = get_answer(question)
+        save_result(message_id, user_id, chat_id, sent_at, question, answer)
+        #message = make_result_message(answer)
+        response_text = answer or "Произошла ошибка, пожалуйста, повторите вопрос позже"
+        response_text = response_text.replace('**', '*')
         send_api_request("sendMessage", {
             'chat_id': chat_id,
-            'text': message,
-            'parse_mode': 'MarkdownV2',
+            'text': response_text,
+            'parse_mode': 'Markdown',
             'disable_notification': True,
             'disable_web_page_preview': True,
             'reply_to_message_id': message_id
@@ -102,17 +142,18 @@ def handle_search_command(update):
 
 def handle_start_command(chat_id, is_group=False):
     message = f'''
-    {BOT_MENTION} поможет найти, в каких уроках на YouTube-канале Махон Меир может быть ответ на ваш вопрос.
-    Просто отправьте ваш вопрос в личный чат с ботом.
-    В ответ бот пришлет список ссылок на уроки с тайм-кодами, в которых может содержаться ответ на вопрос.
-    Есть ограничения: 20 вопросов в сутки, и не чаще 1 вопроса в 30 секунд.
+    Просто отправьте ваш вопрос в личный чат с ботом\.
+    {BOT_MENTION} сгенерирует ответ на основе содержимого уроков YouTube\-канала Махон Меир\.
+    Чем подробнее вы сформулируете вопрос, тем более точным будет ответ\.
+    Обратите внимание \- *каждое* ваше сообщение бот воспринимает как *новый* вопрос\.
+    Есть ограничения: 20 вопросов в сутки, и не чаще 1 вопроса в 30 секунд\.
     '''
     message = textwrap.dedent(message)
 
     try:
         msg_new = send_api_request("sendMessage", {
             'chat_id': chat_id,
-            'text': escape_str(message),
+            'text': message,
             'parse_mode': 'MarkdownV2',
             'disable_notification': True,
             'disable_web_page_preview': True
