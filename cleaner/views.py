@@ -86,6 +86,7 @@ def handle_search_command(update):
     try:
         result = similarity_search(question)
         save_result(message_id, user_id, chat_id, sent_at, question, result)
+        # TODO: update make_result_message
         message = make_result_message(result)
         send_api_request("sendMessage", {
             'chat_id': chat_id,
