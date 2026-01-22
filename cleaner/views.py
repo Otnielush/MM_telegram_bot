@@ -30,14 +30,16 @@ ollama_client = Client(
 )
 
 prompt = """
-        Ты даешь ответы на вопросы пользователя, используя текст, который я тебе дал.
-        Не придумывай сам ответ, используй только текст, который я тебе дал.
-        Выбирай из текста только нужную информацию для ответа.
-        Если в тексте нет ответа, используй фразу: "В моей базе текстов по урокам не нашлась информация о ..."
+# Instruction:
+Ты даешь ответы на вопросы пользователя, используя текст, который я тебе дал.
+Не придумывай сам ответ, используй только Текст, который я тебе дал.
+Выбирай из текста только нужную информацию для ответа.
+Если в тексте нет ответа, используй фразу: "В моей базе текстов по урокам не нашлась информация о ..."
+---
 
-        ## Текст:
-        {{document}}
-        """
+# Текст:
+{{document}}
+"""
 
 def is_rate_limited(user_id):
     """
@@ -77,8 +79,13 @@ def get_date_time_sent(update):
     return time_sent
 
 def get_answer(question):
-    similar_texts = similarity_search(question, 3)
-    doc = " ".join(similar_texts)
+    similar_texts = similarity_search(question, 5)
+    doc = []
+    for i, res in enumerate(similar_texts):
+        doc_sep = (f"## Source #{i + 1}\nLesson name: {res['lesson_name']} from {res['upload_date']}\n"
+                   f"Part # {res['part']}\nText:\n{res['text']}")
+        doc.append(doc_sep)
+    doc = "\n---\n".join(doc)
 
     messages = [
         {
@@ -87,12 +94,13 @@ def get_answer(question):
         },
         {
             'role': 'user',
-            'content': question,
+            'content': question + "\n\n# Output Guidelines:\nНапиши ответ в соответствии с Instruction.",  # повторить задании на случай длинного текста, чтоб не потерялся
         },
     ]
 
     try:
-        response = ollama_client.chat('gpt-oss:20b', messages=messages, stream=False)
+        response = ollama_client.chat('gpt-oss:20b-cloud', messages=messages, stream=False,
+                                      options={'temperature': 0.2, "num_predict": 1000, 'num_ctx': 8192})
         answer = response['message']['content']
         return answer
     except Exception as e:
