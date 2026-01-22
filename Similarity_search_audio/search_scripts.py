@@ -30,7 +30,7 @@ def similarity_search(query, top_k=10) -> list[dict]:
         except Exception as e:
             print('similarity_search json parse error:', e)
             continue
-        result.append({"name": data['lesson_name'], "part": data['part'],
+        result.append({"lesson_name": data['lesson_name'], "part": data['part'],
                        "start":data['time_start'], "end":data['time_end'],
                        "upload_date":data['upload_date'], "yt_id":data['youtube_id'],
                        "score":round(r.metadata['score'], 3), "text": data['text']})
