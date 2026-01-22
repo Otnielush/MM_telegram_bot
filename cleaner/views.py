@@ -83,7 +83,7 @@ def get_answer(question):
     doc = []
     for i, res in enumerate(similar_texts):
         doc_sep = (f"## Source #{i + 1}\nLesson name: {res['lesson_name']} from {res['upload_date']}\n"
-                   f"Part # {res['part']}\nText:\n{res['text']}")
+                   f"Part {res['part']}\nText:\n{res['text']}")
         doc.append(doc_sep)
     doc = "\n---\n".join(doc)
 
