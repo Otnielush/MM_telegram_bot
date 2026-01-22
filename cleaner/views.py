@@ -7,7 +7,7 @@ from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime
 from django.utils import timezone
-from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN, BOT_MENTION, OLLAMA_API_KEY
+from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN, BOT_MENTION, OLLAMA_API_KEY, WHITELISTED_USERS
 from .models import Message
 from youtuber.utils import escape_str, send_api_request
 from .utils import make_result_message, save_result
@@ -112,20 +112,21 @@ def handle_search_command(update):
     chat_id = update['message']['chat']['id']
     message_id = update['message']['message_id']
 
-    rate_limited, limit_message = is_rate_limited(user_id)
-    if rate_limited:
-        try:
-            send_api_request('sendMessage', {
-                'chat_id': chat_id,
-                'text': escape_str(limit_message),
-                'parse_mode': 'MarkdownV2',
-                'disable_notification': True,
-                'reply_to_message_id': message_id
-            })
-        except Exception as e:
-            print(e)
+    if user_id not in WHITELISTED_USERS:
+        rate_limited, limit_message = is_rate_limited(user_id)
+        if rate_limited:
+            try:
+                send_api_request('sendMessage', {
+                    'chat_id': chat_id,
+                    'text': escape_str(limit_message),
+                    'parse_mode': 'MarkdownV2',
+                    'disable_notification': True,
+                    'reply_to_message_id': message_id
+                })
+            except Exception as e:
+                print(e)
 
-        return JsonResponse({'error': 'Rate limit exceeded, user notified.'}, status=200)
+            return JsonResponse({'error': 'Rate limit exceeded, user notified.'}, status=200)
 
     sent_at = get_date_time_sent(update)
     text = update['message'].get('text')
