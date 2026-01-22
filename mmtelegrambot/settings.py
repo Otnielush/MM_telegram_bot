@@ -154,6 +154,9 @@ TELEGRAM_API_URL = f'https://api.telegram.org/bot{TOKEN_BOT}/'
 URL = os.getenv("WEBHOOK_URL")
 WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN")
 
+whitelisted_users = os.getenv("WHITELISTED_USERS", "[]")
+WHITELISTED_USERS = set(json.loads(whitelisted_users))
+
 OPENAI_KEY = os.getenv("OPENAI_KEY")
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
 NEO4J_URI = os.getenv("NEO4J_URI")
