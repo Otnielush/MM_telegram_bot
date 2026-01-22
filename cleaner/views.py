@@ -102,10 +102,10 @@ def get_answer(question):
         response = ollama_client.chat('gpt-oss:20b-cloud', messages=messages, stream=False,
                                       options={'temperature': 0.2, "num_predict": 1000, 'num_ctx': 8192})
         answer = response['message']['content']
-        return answer
+        return answer, doc
     except Exception as e:
         logger.error('Error getting Ollama response for question "%s": %s', question, e)
-        return None
+        return None, doc
 
 def handle_search_command(update):
     user_id = update['message']['from']['id']
@@ -129,9 +129,15 @@ def handle_search_command(update):
 
     sent_at = get_date_time_sent(update)
     text = update['message'].get('text')
+
+    is_debug = False
+    if "#debug" in text:
+        text = text.replace("#debug", "").strip()
+        is_debug = True
+
     question = text.strip()
     try:
-        answer = get_answer(question)
+        answer, doc = get_answer(question)
         save_result(message_id, user_id, chat_id, sent_at, question, answer)
         #message = make_result_message(answer)
         response_text = answer or "Произошла ошибка, пожалуйста, повторите вопрос позже"
@@ -144,6 +150,21 @@ def handle_search_command(update):
             'disable_web_page_preview': True,
             'reply_to_message_id': message_id
         })
+        if is_debug:
+            # Handle large text in `doc` by splitting it into chunks
+            max_length = 4000  # Slightly less than Telegram limit to account for other data/formatting
+            chunks = [doc[i:i + max_length] for i in range(0, len(doc), max_length)]
+
+            # Send each chunk as a separate message
+            for chunk in chunks:
+                send_api_request("sendMessage", {
+                    'chat_id': chat_id,
+                    'text': chunk,
+                    'parse_mode': 'Markdown',
+                    'disable_notification': True,
+                    'disable_web_page_preview': True,
+                    'reply_to_message_id': message_id
+                })
     except Exception as e:
         print(e)
         return HttpResponseBadRequest('Bad Request')
