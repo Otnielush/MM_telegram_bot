@@ -10,7 +10,7 @@ from django.utils import timezone
 from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN, BOT_MENTION, OLLAMA_API_KEY, WHITELISTED_USERS
 from .models import Message
 from youtuber.utils import escape_str, send_api_request
-from .utils import make_result_message, save_result
+from .utils import make_message_with_youtube_links, save_result
 from Similarity_search_audio.search_scripts import similarity_search
 from cleaner.spam_detector import spam_detector
 from ollama import Client
@@ -102,10 +102,10 @@ def get_answer(question):
         response = ollama_client.chat('gpt-oss:20b-cloud', messages=messages, stream=False,
                                       options={'temperature': 0.2, "num_predict": 1000, 'num_ctx': 8192})
         answer = response['message']['content']
-        return answer, doc
+        return answer, doc, similar_texts
     except Exception as e:
         logger.error('Error getting Ollama response for question "%s": %s', question, e)
-        return None, doc
+        return None, doc, similar_texts
 
 def handle_search_command(update):
     user_id = update['message']['from']['id']
@@ -138,9 +138,8 @@ def handle_search_command(update):
 
     question = text.strip()
     try:
-        answer, doc = get_answer(question)
+        answer, doc, similar_texts = get_answer(question)
         save_result(message_id, user_id, chat_id, sent_at, question, answer)
-        #message = make_result_message(answer)
         response_text = answer or "Произошла ошибка, пожалуйста, повторите вопрос позже"
         response_text = response_text.replace('**', '*')
         send_api_request("sendMessage", {
@@ -151,6 +150,18 @@ def handle_search_command(update):
             'disable_web_page_preview': True,
             'reply_to_message_id': message_id
         })
+        youtube_links_message = make_message_with_youtube_links(similar_texts)
+        if youtube_links_message is not None:
+            has_answer = answer is not None and "В моей базе текстов по урокам не нашлась информация" not in answer
+            title = "*Источники:*\n\n" if has_answer else "*Похожие на ваш вопрос темы можно посмотреть в этих уроках:*\n\n"
+            send_api_request("sendMessage", {
+                'chat_id': chat_id,
+                'text': title + youtube_links_message,
+                'parse_mode': 'MarkdownV2',
+                'disable_notification': True,
+                'disable_web_page_preview': True,
+                'reply_to_message_id': message_id
+            })
         if is_debug:
             # Handle large text in `doc` by splitting it into chunks
             max_length = 4000  # Slightly less than Telegram limit to account for other data/formatting
