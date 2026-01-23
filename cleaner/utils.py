@@ -21,11 +21,11 @@ def save_result(message_id, user_id, chat_id, sent_at, text, results):
 
     return False
 
-def make_result_message(result):
+def make_message_with_youtube_links(result):
     if len(result):
         item_strings = []
         for item in result:
-            title = item["name"]
+            title = item["lesson_name"]
             youtube_id = item["yt_id"]
             start_time = round(item["start"])
             end_time = round(item["end"]) if item["end"] > 0 else None
@@ -34,4 +34,4 @@ def make_result_message(result):
             item_strings.append(msg)
         return '\n\n'.join(item_strings)
 
-    return "К сожалению, ничего не найдено"
+    return None
