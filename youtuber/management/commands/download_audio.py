@@ -38,23 +38,35 @@ class Command(BaseCommand):
 
                 return [best_format]
 
-            ydl_opts = {
+            audio_opts = {
                 'format': format_selector,
                 'outtmpl': os.path.join(MEDIA_ROOT, 'audio', '%(id)s.%(ext)s'),
                 "quiet": True,
                 "no_warnings": True,
+            }
 
+            subs_opts = {
+                "skip_download": True,
                 "writesubtitles": True,
                 "writeautomaticsub": True,
                 "subtitleslangs": ["ru"],
                 "subtitlesformat": "vtt",
-                "subtitlesouttmpl": os.path.join(MEDIA_ROOT, 'audio', '%(id)s.%(ext)s'),
+                "outtmpl": os.path.join(MEDIA_ROOT, 'audio', '%(id)s.%(ext)s'),
+                "quiet": True,
+                "no_warnings": True,
             }
+
+            # First, try to download 'ru' subtitles
+            try:
+                with yt_dlp.YoutubeDL(subs_opts) as ydl:
+                    ydl.download([youtube_url])
+            except Exception as e:
+                print(f"Couldn't download subtitles:\n {e}")
 
             retry_count = 3
             for attempt in range(retry_count):
                 try:
-                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    with yt_dlp.YoutubeDL(audio_opts) as ydl:
                         info_dict = ydl.extract_info(youtube_url, download=False)
                         title = unicodedata.normalize('NFC', info_dict.get('title', ''))
                         duration = info_dict.get('duration', 0)
