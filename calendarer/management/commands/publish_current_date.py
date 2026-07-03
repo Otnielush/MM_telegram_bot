@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from datetime import datetime
+from django.utils import timezone
 from requests import get
 import json
 from youtuber.utils import send_api_request
@@ -20,10 +20,10 @@ def say_date():
     hMonthInt = {"Nisan": 1, "Iyyar": 2, "Sivan": 3, "Tamuz": 4, "Av": 5, "Elul": 6, "Tishrei": 7, "Cheshvan": 8,
                  "Kislev": 9, "Tevet": 10, "Sh'vat": 11, "Adar I": 12, "Adar II": 13, "Adar": 12}
 
-    date_now = datetime.now().date()
+    today = timezone.localdate()
     response = get(
-        "https://www.hebcal.com/converter/?cfg=json&gy={}&gm={}&gd={}&g2h=1&lg=ru".format(date_now.year, date_now.month,
-                                                                                          date_now.day))
+        "https://www.hebcal.com/converter/?cfg=json&gy={}&gm={}&gd={}&g2h=1&lg=ru".format(today.year, today.month,
+                                                                                          today.day))
     date = json.loads(response.text)
 
     date['hmonthRu'] = hMonth[date['hm']]
@@ -45,6 +45,14 @@ class Command(BaseCommand):
         """
         Telling jewish date to chat
         """
+        today = timezone.localdate()
+
+        if Date.objects.filter(date=today).exists():
+            self.stdout.write(
+                self.style.WARNING(f'Date {today} already posted, skipping.')
+            )
+            return
+
         try:
             date = say_date()
 
@@ -71,5 +79,5 @@ class Command(BaseCommand):
             )
         except:
             self.stdout.write(
-                self.style.SUCCESS('Error while trying to post current date')
+                self.style.ERROR('Error while trying to post current date')
             )
