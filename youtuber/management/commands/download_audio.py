@@ -5,7 +5,8 @@ import unicodedata
 from mmtelegrambot.settings import MEDIA_ROOT
 import yt_dlp
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
+from django.utils import timezone
 
 class Command(BaseCommand):
     help = 'Download audio track from YouTube lesson'
@@ -19,6 +20,13 @@ class Command(BaseCommand):
         if len(lessons_without_audio) > 0:
             lesson = lessons_without_audio.last()
             youtube_id = lesson.youtube_id
+
+            # Check how much time has passed since lesson added to DB
+            time_since_added = timezone.now() - lesson.time_added
+            if time_since_added < timedelta(hours=2):
+                print(f'Less than 2 hours have passed since {youtube_id} was added to the database. Subtitles may not be generated yet. Delaying...')
+                return
+            
             youtube_url = f'http://youtube.com/watch?v={youtube_id}'
 
             def format_selector(ctx):
