@@ -37,8 +37,16 @@ class Command(BaseCommand):
                 if not m4a_formats:
                     return None
 
+                # Only consider the Russian audio track, or the track with no
+                # language tag (the original, untranslated audio). This excludes
+                # other-language dubs (e.g. YouTube's auto-generated English)
+                # which can otherwise outrank the Russian track on bitrate alone.
+                untagged_or_ru = [f for f in m4a_formats if f.get('language') in (None, 'ru')]
+                ru_formats = [f for f in untagged_or_ru if f.get('language') == 'ru']
+                candidates = ru_formats or untagged_or_ru or m4a_formats
+
                 # Sort by quality metrics (preferring higher values)
-                best_format = max(m4a_formats, key=lambda x: (
+                best_format = max(candidates, key=lambda x: (
                     x.get('abr', 0),  # average bitrate
                     x.get('asr', 0),  # audio sampling rate
                     x.get('filesize', 0)  # file size as a last resort
