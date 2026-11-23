@@ -137,6 +137,7 @@ def handle_search_command(update):
         is_debug = True
 
     question = text.strip()
+    answer = None
     try:
         answer, doc, similar_texts = get_answer(question)
         response_text = answer or "Произошла ошибка, пожалуйста, повторите вопрос позже"
@@ -176,10 +177,12 @@ def handle_search_command(update):
                     'disable_web_page_preview': True,
                     'reply_to_message_id': message_id
                 })
-        save_result(message_id, user_id, chat_id, sent_at, question, answer)
     except Exception:
         logger.exception('Error handling search question "%s"', question)
         return HttpResponseBadRequest('Bad Request')
+    finally:
+        # Record every question, including ones where search/LLM/Telegram failed.
+        save_result(message_id, user_id, chat_id, sent_at, question, answer)
 
 def handle_start_command(chat_id, is_group=False):
     message = f'''
