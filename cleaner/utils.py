@@ -5,7 +5,7 @@ VECTOR_INDEX_NAME = "lessons_text_embd"
 
 
 def save_result(message_id, user_id, chat_id, sent_at, text, results):
-    if len(results):
+    if results:
         try:
             Question.objects.create(
                 message_id = message_id,
@@ -22,7 +22,7 @@ def save_result(message_id, user_id, chat_id, sent_at, text, results):
     return False
 
 def make_message_with_youtube_links(result):
-    if len(result):
+    if result:
         item_strings = []
         for item in result:
             title = item["lesson_name"]

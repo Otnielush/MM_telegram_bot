@@ -139,7 +139,6 @@ def handle_search_command(update):
     question = text.strip()
     try:
         answer, doc, similar_texts = get_answer(question)
-        save_result(message_id, user_id, chat_id, sent_at, question, answer)
         response_text = answer or "Произошла ошибка, пожалуйста, повторите вопрос позже"
         response_text = response_text.replace('**', '*')
         send_api_request("sendMessage", {
@@ -177,8 +176,9 @@ def handle_search_command(update):
                     'disable_web_page_preview': True,
                     'reply_to_message_id': message_id
                 })
-    except Exception as e:
-        print(e)
+        save_result(message_id, user_id, chat_id, sent_at, question, answer)
+    except Exception:
+        logger.exception('Error handling search question "%s"', question)
         return HttpResponseBadRequest('Bad Request')
 
 def handle_start_command(chat_id, is_group=False):
