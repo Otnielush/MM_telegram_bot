@@ -158,7 +158,8 @@ whitelisted_users = os.getenv("WHITELISTED_USERS", "[]")
 WHITELISTED_USERS = set(json.loads(whitelisted_users))
 
 OPENAI_KEY = os.getenv("OPENAI_KEY")
-OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free")
 NEO4J_URI = os.getenv("NEO4J_URI")
 NEO4J_DB = os.getenv("NEO4J_DB")
 neo4j_cred = os.getenv("NEO4J_AUTH")
@@ -192,7 +193,7 @@ LOGGING = {
         },
     },
     'loggers': {
-        'cleaner.views': {
+        'cleaner': {
             'handlers': ['file'],
             'level': 'INFO',
             'propagate': True,

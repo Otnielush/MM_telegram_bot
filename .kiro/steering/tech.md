@@ -19,7 +19,7 @@
 
 ### AI & NLP
 - **openai 1.88.0**: OpenAI API integration
-- **ollama 0.6.1**: Local LLM integration
+- **OpenRouter** (via `requests`): LLM answers to user questions
 - **scikit-learn 1.7.2**: ML models (spam detection)
 - **pydantic 2.9.2**: Data validation
 
@@ -94,6 +94,7 @@ All configuration comes from `.env` file (see `.env.example`):
 - `TOKEN_BOT`: Telegram bot token
 - `WEBHOOK_URL`: Webhook endpoint
 - `OPENAI_KEY`: OpenAI API key
+- `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`: OpenRouter key and model for Q&A answers
 - `NEO4J_URI`, `NEO4J_AUTH`: Neo4j connection
 - `REDIS_LOCATION`: Redis connection string
 - `WHITELISTED_USERS`: Comma-separated user IDs
@@ -108,7 +109,7 @@ All configuration comes from `.env` file (see `.env.example`):
 - **Telegram**: Bot API via `pyTelegramBotAPI`
 - **OpenAI**: GPT models for content generation
 - **Neo4j**: Graph database for knowledge storage
-- **Ollama**: Local model serving (optional)
+- **OpenRouter**: LLM for answering user questions over lesson texts
 - **Lemonfox ASR**: Speech recognition API (optional)
 - **Redis**: Session/cache backend
 
