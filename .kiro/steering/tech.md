@@ -98,6 +98,13 @@ All configuration comes from `.env` file (see `.env.example`):
 - `NEO4J_URI`, `NEO4J_AUTH`: Neo4j connection
 - `REDIS_LOCATION`: Redis connection string
 - `WHITELISTED_USERS`: Comma-separated user IDs
+- `ADMIN_ID`: Telegram chat ID that receives admin alerts
+
+### Admin alerts
+`youtuber.utils.notify_admin(text, silent=False, throttle_key=None, throttle_seconds=None)` sends a plain-text Telegram message to `ADMIN_ID`; it never raises, and `throttle_key` + `throttle_seconds` limit alerts to one per key per window (Django cache / Redis). Alerts sent:
+- `download_audio`: silent on a lesson's first failed run, loud when the third failure marks it `skip`
+- `check_new_videos`: silent count of newly added lessons
+- Q&A (`cleaner.views.get_answer`): OpenRouter errors — loud for 401/402/403, silent for 429, timeouts and 5xx; one alert per error type per hour
 
 ### Logging
 - Logs written to `logs/telegram_bot.log`

@@ -9,9 +9,9 @@ from datetime import datetime
 from django.utils import timezone
 from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN, BOT_MENTION, WHITELISTED_USERS
 from .models import Message
-from youtuber.utils import escape_str, send_api_request
+from youtuber.utils import escape_str, notify_admin, send_api_request
 from .ai import AIAuthError, AICreditsError, AIError, AIRateLimitError, build_answer_messages, chat_completion
-from .utils import make_message_with_youtube_links, notify_admin, save_result
+from .utils import make_message_with_youtube_links, save_result
 from Similarity_search_audio.search_scripts import similarity_search
 from cleaner.spam_detector import spam_detector
 import logging
@@ -23,6 +23,8 @@ SHORT_TERM_WINDOW = 30     # 30-second window
 
 DAILY_LIMIT = 10           # maximum requests per day (OpenRouter free models allow only 50 a day for the whole bot)
 DAILY_WINDOW = 86400       # 24-hour window (in seconds)
+
+AI_ALERT_INTERVAL = 3600   # questions arrive any time, so alert the admin at most once an hour per AI error type
 
 ERROR_MESSAGE = "Произошла ошибка, пожалуйста, повторите вопрос позже"
 AI_RATE_LIMIT_MESSAGE = (
@@ -79,11 +81,13 @@ def get_answer(question):
         return answer, doc, similar_texts, None
     except AIError as e:
         logger.error('Error getting AI answer for question "%s": %s', question, e)
+        # Key/credits problems won't fix themselves, so they are loud; rate limits, timeouts
+        # and 5xx are usually temporary, so silent. One alert per error type per hour.
+        loud = isinstance(e, (AIAuthError, AICreditsError))
+        notify_admin(f'Бот не может отвечать на вопросы: {e}', silent=not loud,
+                     throttle_key=f'ai:{type(e).__name__}', throttle_seconds=AI_ALERT_INTERVAL)
         if isinstance(e, AIRateLimitError):
             return None, doc, similar_texts, AI_RATE_LIMIT_MESSAGE
-        if isinstance(e, (AIAuthError, AICreditsError)):
-            # Key/credits problems won't fix themselves — let the admin know
-            notify_admin(f'Бот не может отвечать на вопросы: {e}')
         return None, doc, similar_texts, ERROR_MESSAGE
 
 def handle_search_command(update):

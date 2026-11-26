@@ -1,6 +1,7 @@
 import json
 from unittest.mock import patch, MagicMock
 
+import requests
 from django.core.cache import cache
 from django.test import SimpleTestCase, override_settings
 
@@ -121,13 +122,21 @@ class BuildAnswerMessagesTests(SimpleTestCase):
 
 @override_settings(OPENROUTER_API_KEY='test-key', CACHES=LOCMEM_CACHE)
 @patch('cleaner.views.similarity_search', return_value=SIMILAR_TEXTS)
-@patch('cleaner.utils.ADMIN_ID', '42')
-@patch('cleaner.utils.send_api_request')
+@patch('youtuber.utils.ADMIN_ID', '42')
+@patch('youtuber.utils.send_api_request', return_value=fake_response(200, {'ok': True}))
 @patch('cleaner.ai.requests.post')
 class GetAnswerTests(SimpleTestCase):
 
     def setUp(self):
         cache.clear()
+
+    def assert_alert(self, send, text, silent):
+        send.assert_called_once()
+        method, data = send.call_args.args
+        self.assertEqual(method, 'sendMessage')
+        self.assertEqual(data['chat_id'], '42')
+        self.assertIn(text, data['text'])
+        self.assertEqual(data['disable_notification'], silent)
 
     def test_returns_answer(self, post, send, _search):
         post.return_value = ok_response('Суббота — день отдыха')
@@ -147,21 +156,61 @@ class GetAnswerTests(SimpleTestCase):
         self.assertIsNone(answer)
         self.assertEqual(error_message, ERROR_MESSAGE)
         self.assertEqual(similar_texts, SIMILAR_TEXTS)
-        send.assert_called_once()
-        method, data = send.call_args.args
-        self.assertEqual(method, 'sendMessage')
-        self.assertEqual(data['chat_id'], '42')
-        self.assertIn('Закончились кредиты OpenRouter', data['text'])
+        self.assert_alert(send, 'Закончились кредиты OpenRouter (402', silent=False)
 
         # Repeated failures within the hour don't spam the admin
         get_answer('Ещё вопрос')
         send.assert_called_once()
 
-    def test_rate_limit_explains_free_models_and_does_not_notify_admin(self, post, send, _search):
+    def test_invalid_key_is_loud(self, post, send, _search):
+        post.return_value = error_response(401, 'No auth credentials found')
+
+        get_answer('Вопрос')
+
+        self.assert_alert(send, 'Неверный ключ OpenRouter (401', silent=False)
+
+    def test_rate_limit_explains_free_models_and_notifies_admin_silently(self, post, send, _search):
         post.return_value = error_response(429, 'Rate limit exceeded: free-models-per-day')
 
         answer, _doc, _texts, error_message = get_answer('Вопрос')
 
         self.assertIsNone(answer)
         self.assertEqual(error_message, AI_RATE_LIMIT_MESSAGE)
-        send.assert_not_called()
+        self.assert_alert(send, 'Превышен лимит запросов OpenRouter', silent=True)
+
+    def test_server_error_is_silent(self, post, send, _search):
+        post.return_value = error_response(502, 'Bad gateway')
+
+        _answer, _doc, _texts, error_message = get_answer('Вопрос')
+
+        self.assertEqual(error_message, ERROR_MESSAGE)
+        self.assert_alert(send, 'Ошибка OpenRouter (502', silent=True)
+
+    def test_timeout_is_silent(self, post, send, _search):
+        post.side_effect = requests.Timeout('read timed out')
+
+        _answer, _doc, _texts, error_message = get_answer('Вопрос')
+
+        self.assertEqual(error_message, ERROR_MESSAGE)
+        self.assert_alert(send, 'OpenRouter недоступен', silent=True)
+
+    def test_error_types_are_throttled_separately(self, post, send, _search):
+        post.return_value = error_response(502)
+        get_answer('Вопрос')
+        get_answer('Вопрос')
+        post.return_value = error_response(402)
+        get_answer('Вопрос')
+        get_answer('Вопрос')
+
+        self.assertEqual(send.call_count, 2)
+        self.assertEqual([c.args[1]['disable_notification'] for c in send.call_args_list], [True, False])
+
+    def test_alert_failure_does_not_break_answer(self, post, send, _search):
+        post.return_value = error_response(402)
+        send.side_effect = requests.ConnectionError('telegram is down')
+
+        answer, _doc, similar_texts, error_message = get_answer('Вопрос')
+
+        self.assertIsNone(answer)
+        self.assertEqual(error_message, ERROR_MESSAGE)
+        self.assertEqual(similar_texts, SIMILAR_TEXTS)
