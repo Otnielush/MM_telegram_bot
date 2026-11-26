@@ -7,6 +7,35 @@ import yt_dlp
 import time
 from datetime import datetime, timedelta
 from django.utils import timezone
+from youtuber.utils import notify_admin
+
+ERROR_TEXT_LIMIT = 500
+
+
+def notify_download_error(lesson, error):
+    """Silent alert on a lesson's first failed run, loud one when it gets skipped for good."""
+    if lesson.skip:
+        header = f'❌ Урок пропущен после {lesson.error_count} ошибок загрузки'
+        footer = '\n\nЧтобы повторить загрузку, сбросьте error_count и skip в админке.'
+    elif lesson.error_count == 1:
+        header = '⚠️ Первая ошибка загрузки урока'
+        footer = ''
+    else:
+        return False
+
+    error_text = str(error)
+    if len(error_text) > ERROR_TEXT_LIMIT:
+        error_text = error_text[:ERROR_TEXT_LIMIT] + '…'
+
+    text = (
+        f'{header}\n\n'
+        f'YouTube ID: {lesson.youtube_id}\n'
+        f'Название: {lesson.title or "—"}\n'
+        f'https://youtu.be/{lesson.youtube_id}\n\n'
+        f'Ошибка: {error_text}{footer}'
+    )
+    return notify_admin(text, silent=not lesson.skip)
+
 
 class Command(BaseCommand):
     help = 'Download audio track from YouTube lesson'
@@ -183,6 +212,7 @@ class Command(BaseCommand):
                         lesson.save()
 
                         print(f'Error while processing video {youtube_id}:\n {e}.\nError count: {lesson.error_count}.')
+                        notify_download_error(lesson, e)
         else:
             self.stdout.write(
                 self.style.SUCCESS('No lessons without audio')

@@ -7,13 +7,13 @@ from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime
 from django.utils import timezone
-from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN, BOT_MENTION, OLLAMA_API_KEY, WHITELISTED_USERS
+from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN, BOT_MENTION, WHITELISTED_USERS
 from .models import Message
-from youtuber.utils import escape_str, send_api_request
+from youtuber.utils import escape_str, notify_admin, send_api_request
+from .ai import AIAuthError, AICreditsError, AIError, AIRateLimitError, build_answer_messages, chat_completion
 from .utils import make_message_with_youtube_links, save_result
 from Similarity_search_audio.search_scripts import similarity_search
 from cleaner.spam_detector import spam_detector
-from ollama import Client
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,25 +21,18 @@ logger = logging.getLogger(__name__)
 SHORT_TERM_LIMIT = 1       # maximum requests every 30 seconds
 SHORT_TERM_WINDOW = 30     # 30-second window
 
-DAILY_LIMIT = 20           # maximum requests per day
+DAILY_LIMIT = 10           # maximum requests per day (OpenRouter free models allow only 50 a day for the whole bot)
 DAILY_WINDOW = 86400       # 24-hour window (in seconds)
 
-ollama_client = Client(
-    host="https://ollama.com",
-    headers={'Authorization': 'Bearer ' + OLLAMA_API_KEY}
+AI_ALERT_INTERVAL = 3600   # questions arrive any time, so alert the admin at most once an hour per AI error type
+
+ERROR_MESSAGE = "Произошла ошибка, пожалуйста, повторите вопрос позже"
+AI_RATE_LIMIT_MESSAGE = (
+    "Бот работает на бесплатных AI-моделях, у которых есть лимит запросов, и сейчас он исчерпан. "
+    "Пожалуйста, повторите вопрос позже.\n\n"
+    "Это некоммерческий проект. Если хотите поддержать его как спонсор — "
+    "напишите администраторам группы Махон Меир: @machonmeir"
 )
-
-prompt = """
-# Instruction:
-Ты даешь ответы на вопросы пользователя, используя текст, который я тебе дал.
-Не придумывай сам ответ, используй только Текст, который я тебе дал.
-Выбирай из текста только нужную информацию для ответа.
-Если в тексте нет ответа, используй фразу: "В моей базе текстов по урокам не нашлась информация о ..."
----
-
-# Текст:
-{{document}}
-"""
 
 def is_rate_limited(user_id):
     """
@@ -59,7 +52,7 @@ def is_rate_limited(user_id):
     request_count = cache.get(daily_cache_key, 0)
 
     if request_count >= DAILY_LIMIT:
-        return True, "Вы превысили суточный лимит в 20 вопросов. Пожалуйста, повторите вопрос завтра"
+        return True, f"Вы превысили суточный лимит в {DAILY_LIMIT} вопросов. Пожалуйста, повторите вопрос завтра"
 
     cache.set(short_term_cache_key, current_time, timeout=SHORT_TERM_WINDOW)
     cache.set(daily_cache_key, request_count + 1, timeout=DAILY_WINDOW)
@@ -79,33 +72,23 @@ def get_date_time_sent(update):
     return time_sent
 
 def get_answer(question):
+    """Returns (answer, doc, similar_texts, error_message); error_message is shown to the user when answer is None."""
     similar_texts = similarity_search(question, 5)
-    doc = []
-    for i, res in enumerate(similar_texts):
-        doc_sep = (f"## Source #{i + 1}\nLesson name: {res['lesson_name']} from {res['upload_date']}\n"
-                   f"Part {res['part']}\nText:\n{res['text']}")
-        doc.append(doc_sep)
-    doc = "\n---\n".join(doc)
-
-    messages = [
-        {
-            'role': 'system',
-            'content': prompt.replace("{{document}}", doc),
-        },
-        {
-            'role': 'user',
-            'content': question + "\n\n# Output Guidelines:\nНапиши ответ в соответствии с Instruction.",  # повторить задании на случай длинного текста, чтоб не потерялся
-        },
-    ]
+    messages, doc = build_answer_messages(question, similar_texts)
 
     try:
-        response = ollama_client.chat('gpt-oss:20b-cloud', messages=messages, stream=False,
-                                      options={'temperature': 0.2, "num_predict": 1000, 'num_ctx': 8192})
-        answer = response['message']['content']
-        return answer, doc, similar_texts
-    except Exception as e:
-        logger.error('Error getting Ollama response for question "%s": %s', question, e)
-        return None, doc, similar_texts
+        answer = chat_completion(messages, temperature=0.2, max_tokens=2500)
+        return answer, doc, similar_texts, None
+    except AIError as e:
+        logger.error('Error getting AI answer for question "%s": %s', question, e)
+        # Key/credits problems won't fix themselves, so they are loud; rate limits, timeouts
+        # and 5xx are usually temporary, so silent. One alert per error type per hour.
+        loud = isinstance(e, (AIAuthError, AICreditsError))
+        notify_admin(f'Бот не может отвечать на вопросы: {e}', silent=not loud,
+                     throttle_key=f'ai:{type(e).__name__}', throttle_seconds=AI_ALERT_INTERVAL)
+        if isinstance(e, AIRateLimitError):
+            return None, doc, similar_texts, AI_RATE_LIMIT_MESSAGE
+        return None, doc, similar_texts, ERROR_MESSAGE
 
 def handle_search_command(update):
     user_id = update['message']['from']['id']
@@ -137,10 +120,10 @@ def handle_search_command(update):
         is_debug = True
 
     question = text.strip()
+    answer = None
     try:
-        answer, doc, similar_texts = get_answer(question)
-        save_result(message_id, user_id, chat_id, sent_at, question, answer)
-        response_text = answer or "Произошла ошибка, пожалуйста, повторите вопрос позже"
+        answer, doc, similar_texts, error_message = get_answer(question)
+        response_text = answer or error_message or ERROR_MESSAGE
         response_text = response_text.replace('**', '*')
         send_api_request("sendMessage", {
             'chat_id': chat_id,
@@ -177,9 +160,12 @@ def handle_search_command(update):
                     'disable_web_page_preview': True,
                     'reply_to_message_id': message_id
                 })
-    except Exception as e:
-        print(e)
+    except Exception:
+        logger.exception('Error handling search question "%s"', question)
         return HttpResponseBadRequest('Bad Request')
+    finally:
+        # Record every question, including ones where search/LLM/Telegram failed.
+        save_result(message_id, user_id, chat_id, sent_at, question, answer)
 
 def handle_start_command(chat_id, is_group=False):
     message = f'''
@@ -187,7 +173,7 @@ def handle_start_command(chat_id, is_group=False):
     {BOT_MENTION} сгенерирует ответ на основе содержимого уроков YouTube\-канала Махон Меир\.
     Чем подробнее вы сформулируете вопрос, тем более точным будет ответ\.
     Обратите внимание \- *каждое* ваше сообщение бот воспринимает как *новый* вопрос\.
-    Есть ограничения: 20 вопросов в сутки, и не чаще 1 вопроса в 30 секунд\.
+    Есть ограничения: {DAILY_LIMIT} вопросов в сутки, и не чаще 1 вопроса в {SHORT_TERM_WINDOW} секунд\.
     '''
     message = textwrap.dedent(message)
 
@@ -218,9 +204,9 @@ def handle_start_command(chat_id, is_group=False):
         return HttpResponseBadRequest('Bad Request')
 
 def handle_help_command(chat_id):
-    message = '''
+    message = f'''
     ✅ Чтобы задать вопрос, просто отправьте сообщение в свободной форме.
-    ⚠️ В сутки можно задать 20 вопросов, не чаще 1 вопроса в 30 секунд.
+    ⚠️ В сутки можно задать {DAILY_LIMIT} вопросов, не чаще 1 вопроса в {SHORT_TERM_WINDOW} секунд.
     ✍️ Будем рады вашим идеям и замечаниям - пишите в группу Махон Меир: @machonmeir
     '''
     message = textwrap.dedent(message)

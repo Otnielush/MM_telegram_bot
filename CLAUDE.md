@@ -60,10 +60,12 @@ python manage.py train_spam_filter       # retrain the scikit-learn spam classif
 Django project `mmtelegrambot` with three installed apps plus a standalone processing package:
 
 - **cleaner/** — Telegram webhook entry point and message moderation.
-  - `views.telegram_bot` (mounted at `/webhook/getpost/`) is the single webhook handler for all incoming Telegram updates: validates `WEBHOOK_SECRET_TOKEN`, persists messages to `Message`, runs `spam_detector` (scikit-learn) to flag/delete spam, and handles `@BOT_MENTION` questions by rate-limiting the user (`is_rate_limited`, Redis-backed via Django cache), running `Similarity_search_audio.search_scripts.similarity_search` against Neo4j, then asking an Ollama-hosted model to answer using only the retrieved lesson text (`Question` model stores the result).
+  - `views.telegram_bot` (mounted at `/webhook/getpost/`) is the single webhook handler for all incoming Telegram updates: validates `WEBHOOK_SECRET_TOKEN`, persists messages to `Message`, runs `spam_detector` (scikit-learn) to flag/delete spam, and handles `@BOT_MENTION` questions by rate-limiting the user (`is_rate_limited`, Redis-backed via Django cache), running `Similarity_search_audio.search_scripts.similarity_search` against Neo4j, then asking an OpenRouter-hosted model (`cleaner/ai.py`, `OPENROUTER_MODEL`) to answer using only the retrieved lesson text; every OpenRouter error is reported to `ADMIN_ID` via `notify_admin` — loud for key/credits errors (401/402/403), silent for rate limits, timeouts and 5xx, throttled to one alert per error type per hour (`Question` model stores the result).
   - `Message`/`Question` models live here.
 
 - **youtuber/** — YouTube lesson ingestion pipeline, driven entirely by management commands (no views/scheduler in-repo — expected to be cron-driven). The `Lesson` model's boolean flags (`is_downloaded`, `is_published`, `is_inserted_to_db`, `skip`) form the pipeline state machine each command queries against (see Commands section above for the sequence). `Lesson.save()` auto-clears `audio_file`/`subtitles_file` once a lesson is both published and inserted into Neo4j, and signal handlers (`pre_save`/`post_delete`) delete the corresponding files from disk to avoid orphaned media.
+  - `youtuber/utils.notify_admin(text, silent=False, throttle_key=None, throttle_seconds=None)` is the shared way to message the admin (`ADMIN_ID`) in Telegram: plain text, optional cache-based throttling per key (the caller picks the window), never raises. Use it instead of calling `send_api_request` for admin alerts.
+  - `download_audio` alerts the admin silently on a lesson's first failed run (`error_count == 1`) and loudly when the third failure marks it `skip`; to retry such a lesson, reset `error_count`/`skip` in the admin. `check_new_videos` silently reports how many lessons were added.
 
 - **calendarer/** — Tracks the daily schedule message (`Date` model) posted to Telegram; `publish_current_date` builds/edits that message from the day's `Lesson` rows, `delete_date_message_without_lessons` cleans up empty ones.
 
@@ -77,7 +79,7 @@ Django project `mmtelegrambot` with three installed apps plus a standalone proce
 - **v1/** — legacy/archived standalone version of this bot (pre-Django). Not wired into the current Django project; avoid changes here unless explicitly asked to touch legacy code.
 
 ### Data flow
-Telegram webhook → `cleaner.views` → `Message`/spam filter, or Q&A → Neo4j similarity search → Ollama.
+Telegram webhook → `cleaner.views` → `Message`/spam filter, or Q&A → Neo4j similarity search → OpenRouter.
 YouTube URL → `check_new_videos`/`download_audio` (yt-dlp) → `make_summary` (OpenAI) → `send_lesson_to_telegram` → `insert_lesson_to_db` (embeddings → Neo4j) → local audio/subtitle files deleted.
 
 ### Storage layers
@@ -86,4 +88,4 @@ YouTube URL → `check_new_videos`/`download_audio` (yt-dlp) → `make_summary` 
 - **Redis**: Django cache backend, used for rate limiting in `cleaner/views.py`.
 
 ### Configuration
-All config is environment-driven via `.env` (see `.env.example`) and read into `mmtelegrambot/settings.py`, including `WHITELISTED_USERS`, `ADMIN_ID`, `TOKEN_BOT`/`WEBHOOK_SECRET_TOKEN`, OpenAI/Ollama/Lemonfox keys, and Neo4j connection details. Logging goes to `logs/telegram_bot.log` (rotating, 5MB/5 backups) and is currently only wired up for the `cleaner.views` logger.
+All config is environment-driven via `.env` (see `.env.example`) and read into `mmtelegrambot/settings.py`, including `WHITELISTED_USERS`, `ADMIN_ID`, `TOKEN_BOT`/`WEBHOOK_SECRET_TOKEN`, OpenAI/OpenRouter/Lemonfox keys, and Neo4j connection details. Logging goes to `logs/telegram_bot.log` (rotating, 5MB/5 backups) and is currently only wired up for the `cleaner.views` logger.

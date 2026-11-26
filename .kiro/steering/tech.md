@@ -19,7 +19,7 @@
 
 ### AI & NLP
 - **openai 1.88.0**: OpenAI API integration
-- **ollama 0.6.1**: Local LLM integration
+- **OpenRouter** (via `requests`): LLM answers to user questions
 - **scikit-learn 1.7.2**: ML models (spam detection)
 - **pydantic 2.9.2**: Data validation
 
@@ -94,9 +94,17 @@ All configuration comes from `.env` file (see `.env.example`):
 - `TOKEN_BOT`: Telegram bot token
 - `WEBHOOK_URL`: Webhook endpoint
 - `OPENAI_KEY`: OpenAI API key
+- `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`: OpenRouter key and model for Q&A answers
 - `NEO4J_URI`, `NEO4J_AUTH`: Neo4j connection
 - `REDIS_LOCATION`: Redis connection string
 - `WHITELISTED_USERS`: Comma-separated user IDs
+- `ADMIN_ID`: Telegram chat ID that receives admin alerts
+
+### Admin alerts
+`youtuber.utils.notify_admin(text, silent=False, throttle_key=None, throttle_seconds=None)` sends a plain-text Telegram message to `ADMIN_ID`; it never raises, and `throttle_key` + `throttle_seconds` limit alerts to one per key per window (Django cache / Redis). Alerts sent:
+- `download_audio`: silent on a lesson's first failed run, loud when the third failure marks it `skip`
+- `check_new_videos`: silent count of newly added lessons
+- Q&A (`cleaner.views.get_answer`): OpenRouter errors — loud for 401/402/403, silent for 429, timeouts and 5xx; one alert per error type per hour
 
 ### Logging
 - Logs written to `logs/telegram_bot.log`
@@ -108,7 +116,7 @@ All configuration comes from `.env` file (see `.env.example`):
 - **Telegram**: Bot API via `pyTelegramBotAPI`
 - **OpenAI**: GPT models for content generation
 - **Neo4j**: Graph database for knowledge storage
-- **Ollama**: Local model serving (optional)
+- **OpenRouter**: LLM for answering user questions over lesson texts
 - **Lemonfox ASR**: Speech recognition API (optional)
 - **Redis**: Session/cache backend
 
