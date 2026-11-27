@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 def escape_str(text):
     translate_table = str.maketrans({
+        '\\': r'\\',
         '_': r'\_',
         '*': r'\*',
         '[': r'\[',

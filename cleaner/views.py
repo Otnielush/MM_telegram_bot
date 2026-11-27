@@ -2,16 +2,16 @@ import json
 from time import time
 import textwrap
 
+import requests
 from django.core.cache import cache
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from datetime import datetime
-from django.utils import timezone
+from datetime import datetime, timezone as dt_timezone
 from mmtelegrambot.settings import MM_CHAT_ID, WEBHOOK_SECRET_TOKEN, BOT_MENTION, WHITELISTED_USERS
 from .models import Message
 from youtuber.utils import escape_str, notify_admin, send_api_request
 from .ai import AIAuthError, AICreditsError, AIError, AIRateLimitError, build_answer_messages, chat_completion
-from .utils import make_message_with_youtube_links, save_result
+from .utils import llm_markdown_to_telegram, make_message_with_youtube_links, save_result
 from Similarity_search_audio.search_scripts import similarity_search
 from cleaner.spam_detector import spam_detector
 import logging
@@ -60,16 +60,63 @@ def is_rate_limited(user_id):
     return False, None
 
 
+def is_duplicate_question(chat_id, message_id):
+    """True if this message was already taken for processing.
+
+    Answering takes longer than Telegram waits for the webhook, so Telegram delivers the same
+    update again; without this check the question is answered twice.
+    """
+    try:
+        return not cache.add(f'tg_question:{chat_id}:{message_id}', 1, timeout=DAILY_WINDOW)
+    except Exception:
+        # Better a duplicate answer than none when the cache is down
+        logger.exception('Cache error while checking question %s for duplicates', message_id)
+        return False
+
+
+def _send(data):
+    """Call sendMessage. Returns (status_code, error); error is None when Telegram accepted it."""
+    try:
+        response = send_api_request('sendMessage', data)
+    except requests.RequestException as e:
+        return None, f'Telegram недоступен: {e}'
+    if response.status_code == 200:
+        return 200, None
+    try:
+        description = response.json().get('description')
+    except (ValueError, AttributeError):
+        description = None
+    return response.status_code, f'{response.status_code}: {description or response.text[:300]}'
+
+
+def send_message(data, plain_text=None):
+    """sendMessage that never fails silently. Returns True if the message was delivered.
+
+    If Telegram rejects the formatted text (400, usually broken markup), it is resent once
+    without parse_mode, as plain_text if given. Undelivered messages are logged and reported to the admin.
+    """
+    status, error = _send(data)
+    if error is None:
+        return True
+    logger.error('Telegram did not send message to chat %s: %s', data.get('chat_id'), error)
+
+    if status == 400 and 'parse_mode' in data:
+        plain = {key: value for key, value in data.items() if key != 'parse_mode'}
+        if plain_text is not None:
+            plain['text'] = plain_text
+        _status, error = _send(plain)
+        if error is None:
+            return True
+        logger.error('Telegram did not send plain-text message to chat %s: %s', data.get('chat_id'), error)
+
+    notify_admin(f'Бот не смог отправить ответ в Telegram: {error}', silent=True,
+                 throttle_key='tg_send', throttle_seconds=AI_ALERT_INTERVAL)
+    return False
+
+
 def get_date_time_sent(update):
-    date = update['message']['date']
-
-    # Convert Unix timestamp to naive datetime in UTC
-    time_sent = datetime.utcfromtimestamp(date)
-
-    # Make the datetime aware in the local timezone
-    time_sent = timezone.make_aware(time_sent)
-
-    return time_sent
+    # Telegram sends a Unix timestamp, which is always UTC
+    return datetime.fromtimestamp(update['message']['date'], tz=dt_timezone.utc)
 
 def get_answer(question):
     """Returns (answer, doc, similar_texts, error_message); error_message is shown to the user when answer is None."""
@@ -94,6 +141,11 @@ def handle_search_command(update):
     user_id = update['message']['from']['id']
     chat_id = update['message']['chat']['id']
     message_id = update['message']['message_id']
+
+    # Checked before the rate limit so a redelivered update doesn't use up the user's quota
+    if is_duplicate_question(chat_id, message_id):
+        logger.info('Question %s in chat %s is already being processed, skipping', message_id, chat_id)
+        return JsonResponse({'status': 'Duplicate update, skipped.'}, status=200)
 
     if user_id not in WHITELISTED_USERS:
         rate_limited, limit_message = is_rate_limited(user_id)
@@ -124,20 +176,19 @@ def handle_search_command(update):
     try:
         answer, doc, similar_texts, error_message = get_answer(question)
         response_text = answer or error_message or ERROR_MESSAGE
-        response_text = response_text.replace('**', '*')
-        send_api_request("sendMessage", {
+        send_message({
             'chat_id': chat_id,
-            'text': response_text,
-            'parse_mode': 'Markdown',
+            'text': llm_markdown_to_telegram(response_text),
+            'parse_mode': 'MarkdownV2',
             'disable_notification': True,
             'disable_web_page_preview': True,
             'reply_to_message_id': message_id
-        })
+        }, plain_text=response_text)
         youtube_links_message = make_message_with_youtube_links(similar_texts)
         if youtube_links_message is not None:
             has_answer = answer is not None and "В моей базе текстов по урокам не нашлась информация" not in answer
             title = "*Источники:*\n\n" if has_answer else "*Похожие на ваш вопрос темы можно посмотреть в этих уроках:*\n\n"
-            send_api_request("sendMessage", {
+            send_message({
                 'chat_id': chat_id,
                 'text': title + youtube_links_message,
                 'parse_mode': 'MarkdownV2',
@@ -150,12 +201,11 @@ def handle_search_command(update):
             max_length = 4000  # Slightly less than Telegram limit to account for other data/formatting
             chunks = [doc[i:i + max_length] for i in range(0, len(doc), max_length)]
 
-            # Send each chunk as a separate message
+            # Send each chunk as a separate message; raw lesson text, so no markup
             for chunk in chunks:
-                send_api_request("sendMessage", {
+                send_message({
                     'chat_id': chat_id,
                     'text': chunk,
-                    'parse_mode': 'Markdown',
                     'disable_notification': True,
                     'disable_web_page_preview': True,
                     'reply_to_message_id': message_id
