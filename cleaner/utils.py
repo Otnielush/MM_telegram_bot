@@ -1,8 +1,33 @@
 from youtuber.management.commands.send_lesson_to_telegram import make_youtube_link_msg
+from youtuber.utils import escape_str
 from cleaner.models import Question
 import logging
+import re
 
 logger = logging.getLogger(__name__)
+
+_HEADING_RE = re.compile(r'^[ \t]*#{1,6}[ \t]+(.+?)[ \t]*$', re.MULTILINE)
+_BULLET_RE = re.compile(r'^([ \t]*)[*+\-][ \t]+', re.MULTILINE)
+_BOLD_RE = re.compile(r'\*\*(.+?)\*\*')
+
+
+def llm_markdown_to_telegram(text):
+    """Convert the LLM's Markdown answer into Telegram MarkdownV2 that always parses.
+
+    Only bold survives (**x**, and headings rendered as bold); list markers become "•";
+    everything else, including stray * and _, is escaped and shown as is.
+    """
+    text = _HEADING_RE.sub(lambda m: '**' + m.group(1).replace('**', '') + '**', text)
+    text = _BULLET_RE.sub(r'\1• ', text)
+
+    parts = []
+    pos = 0
+    for match in _BOLD_RE.finditer(text):
+        parts.append(escape_str(text[pos:match.start()]))
+        parts.append('*' + escape_str(match.group(1)) + '*')
+        pos = match.end()
+    parts.append(escape_str(text[pos:]))
+    return ''.join(parts)
 
 VECTOR_INDEX_NAME = "lessons_text_embd"
 

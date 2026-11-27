@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone as dt_timezone
 from unittest.mock import patch, MagicMock
 
 import requests
@@ -8,7 +9,8 @@ from django.test import SimpleTestCase, override_settings
 from cleaner.ai import (
     AIAuthError, AICreditsError, AIError, AIRateLimitError, build_answer_messages, chat_completion,
 )
-from cleaner.views import AI_RATE_LIMIT_MESSAGE, ERROR_MESSAGE, get_answer
+from cleaner.utils import llm_markdown_to_telegram
+from cleaner.views import AI_RATE_LIMIT_MESSAGE, ERROR_MESSAGE, get_answer, get_date_time_sent, handle_search_command
 
 LOCMEM_CACHE = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
 
@@ -214,3 +216,154 @@ class GetAnswerTests(SimpleTestCase):
         self.assertIsNone(answer)
         self.assertEqual(error_message, ERROR_MESSAGE)
         self.assertEqual(similar_texts, SIMILAR_TEXTS)
+
+
+MARKDOWN_V2_SPECIALS = set('_*[]()~`>#+-=|{}.!\\')
+
+
+def assert_valid_markdown_v2(test, text):
+    """Every MarkdownV2 special char is escaped, except balanced * pairs (bold)."""
+    bold = False
+    i = 0
+    while i < len(text):
+        char = text[i]
+        if char == '\\':
+            test.assertLess(i + 1, len(text), 'dangling backslash')
+            test.assertIn(text[i + 1], MARKDOWN_V2_SPECIALS, f'needless escape at {i}')
+            i += 2
+            continue
+        if char == '*':
+            bold = not bold
+        else:
+            test.assertNotIn(char, MARKDOWN_V2_SPECIALS, f'unescaped {char!r} at {i}: {text[max(0, i - 20):i + 20]!r}')
+        i += 1
+    test.assertFalse(bold, 'unclosed bold')
+
+
+# Real answers: the first two weren't delivered (odd number of * after the old ** -> * replace)
+HANUKKAH_ANSWER = (
+    "Согласно урокам рава Реувена Трушина, Ханука учит нас **умело радоваться**.\n\nОсновные моменты:\n"
+    "*   Ханука — это **«праздник подготовки»**, полностью погруженный в понятие веселья (симхи), "
+    "но это **скрытое, внутреннее веселье**, а не внешнее (как в Пурим).\n"
+    "*   Суть праздника — **подготовка к великому будущему веселью** (приходу Машиаха).\n"
+    "*   Рав Трушин подчеркивает: «Оказывается, господа, что мы с вами этого не умели делать».\n\n"
+    "Также в уроках рава Йоны Левина: Ханука (как «греческий праздник») символизирует "
+    "**прохождение еврейским народом через очередную цивилизацию** и взаимное влияние с человечеством."
+)
+ISAAC_ANSWER = (
+    "Из предоставленных текстов о Ицхаке (Исааке, Исхаке) известно следующее:\n\n**Родословная и возраст:**\n"
+    "*   Сын Авраама, отец Есава и Яакова (близнецов), родил их в 60 лет.\n*   Прожил 180 лет.\n\n"
+    "**Сущность и качества (по каббале/толкованиям):**\n"
+    "*   Олицетворяет атрибут **Дин (Суд)** и **Гвура (Сила/Могущество)**. Это «одно качество» — сторона левого.\n"
+    "*   Описывается как **«цельный» (шалем)** и **могучий** человек («шел всех по рублю покалечу»).\n\n"
+    "**Ключевые события:**\n"
+    "*   **Акедат Ицхак (Связывание Ицхака / Жертвоприношение):** Главное испытание. Ицхак в 8 дней сказал: "
+    "«Если мне скажут отдать жизнь — отдам сразу»).\n"
+)
+ISAAC_SENT_ANSWER = (
+    "Из предоставленных текстов о Ицхаке (Исааке) известно следующее:\n\n"
+    "*   **Родословная:** Один из отцов (авот), сын Авраама, отец Яакова и Эсава. Жена — Ривка.\n"
+    "*   **Возраст и хронология:**\n    *   Прожил **180 лет**.\n    *   Сыновья-близнецы родились, когда ему было **60 лет**.\n"
+)
+
+
+class LlmMarkdownToTelegramTests(SimpleTestCase):
+
+    def test_real_answers_are_valid_markdown_v2(self):
+        for answer in (HANUKKAH_ANSWER, ISAAC_ANSWER, ISAAC_SENT_ANSWER):
+            with self.subTest(answer=answer[:40]):
+                assert_valid_markdown_v2(self, llm_markdown_to_telegram(answer))
+
+    def test_bold_and_bullets(self):
+        self.assertEqual(
+            llm_markdown_to_telegram('Итог:\n*   **Дин (Суд)** и гвура.\n- второй'),
+            'Итог:\n• *Дин \\(Суд\\)* и гвура\\.\n• второй',
+        )
+
+    def test_nested_bullets_keep_indent(self):
+        self.assertEqual(llm_markdown_to_telegram('*   a\n    *   b'), '• a\n    • b')
+
+    def test_heading_becomes_bold(self):
+        self.assertEqual(llm_markdown_to_telegram('## Итог **важно**\nтекст'), '*Итог важно*\nтекст')
+
+    def test_stray_markup_is_shown_literally(self):
+        text = llm_markdown_to_telegram('a * b _c_ `d` [e](f) \\ **незакрытый')
+        assert_valid_markdown_v2(self, text)
+        self.assertEqual(text, 'a \\* b \\_c\\_ \\`d\\` \\[e\\]\\(f\\) \\\\ \\*\\*незакрытый')
+
+
+def telegram_update(text='Что такое суббота?', user_id=7, chat_id=7, message_id=100):
+    return {'message': {
+        'message_id': message_id, 'date': 1764000000, 'text': text,
+        'from': {'id': user_id}, 'chat': {'id': chat_id, 'type': 'private'},
+    }}
+
+
+@override_settings(CACHES=LOCMEM_CACHE)
+@patch('cleaner.views.WHITELISTED_USERS', [7])
+@patch('cleaner.views.save_result')
+@patch('cleaner.views.make_message_with_youtube_links', return_value=None)
+@patch('cleaner.views.notify_admin')
+@patch('cleaner.views.send_api_request', return_value=fake_response(200, {'ok': True}))
+@patch('cleaner.views.get_answer', return_value=(HANUKKAH_ANSWER, 'doc', SIMILAR_TEXTS, None))
+class HandleSearchCommandTests(SimpleTestCase):
+
+    def setUp(self):
+        cache.clear()
+
+    def test_answer_is_sent_as_markdown_v2(self, get_answer_, send, notify, _links, save):
+        handle_search_command(telegram_update())
+
+        send.assert_called_once()
+        data = send.call_args.args[1]
+        self.assertEqual(data['parse_mode'], 'MarkdownV2')
+        assert_valid_markdown_v2(self, data['text'])
+        save.assert_called_once()
+        notify.assert_not_called()
+
+    def test_redelivered_update_is_answered_once(self, get_answer_, send, _notify, _links, save):
+        handle_search_command(telegram_update())
+        handle_search_command(telegram_update())
+
+        get_answer_.assert_called_once()
+        send.assert_called_once()
+        save.assert_called_once()
+
+    def test_other_message_is_answered(self, get_answer_, send, _notify, _links, _save):
+        handle_search_command(telegram_update(message_id=100))
+        handle_search_command(telegram_update(message_id=101))
+
+        self.assertEqual(get_answer_.call_count, 2)
+
+    def test_rejected_markup_is_resent_as_plain_text(self, _get_answer, send, notify, _links, _save):
+        send.side_effect = [
+            fake_response(400, {'ok': False, 'description': "Bad Request: can't parse entities"}),
+            fake_response(200, {'ok': True}),
+        ]
+        with self.assertLogs('cleaner.views', level='ERROR') as logs:
+            handle_search_command(telegram_update())
+
+        self.assertIn("can't parse entities", logs.output[0])
+        retry = send.call_args_list[1].args[1]
+        self.assertNotIn('parse_mode', retry)
+        self.assertEqual(retry['text'], HANUKKAH_ANSWER)
+        notify.assert_not_called()
+
+    def test_undelivered_answer_notifies_admin(self, _get_answer, send, notify, _links, save):
+        send.return_value = fake_response(403, {'ok': False, 'description': 'Forbidden: bot was blocked by the user'})
+        with self.assertLogs('cleaner.views', level='ERROR'):
+            handle_search_command(telegram_update())
+
+        send.assert_called_once()  # not a markup problem, no plain-text retry
+        notify.assert_called_once()
+        self.assertIn('bot was blocked by the user', notify.call_args.args[0])
+        save.assert_called_once()
+
+
+@override_settings(TIME_ZONE='Asia/Jerusalem')
+class GetDateTimeSentTests(SimpleTestCase):
+
+    def test_unix_timestamp_is_utc(self):
+        # 2026-11-26 13:24:33 UTC = 15:24:33 in Jerusalem; it used to be stored as 13:24:33 Jerusalem time
+        sent = get_date_time_sent({'message': {'date': 1795699473}})
+        self.assertEqual(sent, datetime(2026, 11, 26, 13, 24, 33, tzinfo=dt_timezone.utc))
